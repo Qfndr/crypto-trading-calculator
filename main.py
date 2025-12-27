@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, messagebox, filedialog, font as tkfont
 import json
 import os
 from datetime import datetime
@@ -10,7 +10,7 @@ from chart_generator import ChartGenerator
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import threading
 
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 
 class ModernButton(tk.Button):
     def __init__(self, master, **kwargs):
@@ -20,8 +20,7 @@ class ModernButton(tk.Button):
             bd=0,
             padx=15,
             pady=8,
-            cursor='hand2',
-            font=('Arial', 10)
+            cursor='hand2'
         )
 
 class CryptoTradingCalculator:
@@ -30,6 +29,9 @@ class CryptoTradingCalculator:
         self.root.title(f"ماشین حساب ترید کریپتو v{VERSION}")
         self.root.geometry("1200x800")
         self.root.minsize(1000, 700)
+        
+        # Load IranSans font
+        self.setup_fonts()
         
         # Load configuration
         self.config = Config()
@@ -69,13 +71,14 @@ class CryptoTradingCalculator:
                 'success': '#4caf50',
                 'error': '#f44336',
                 'text_bg': '#ffffff',
-                'text_fg': '#1a1a1a'
+                'text_fg': '#1a1a1a',
+                'label_bg': '#ffffff'
             },
             'dark': {
                 'bg': '#1a1a1a',
                 'fg': '#e0e0e0',
                 'card_bg': '#2d2d2d',
-                'input_bg': '#3d3d3d',
+                'input_bg': '#3a3a3a',
                 'input_fg': '#e0e0e0',
                 'button_bg': '#4a90e2',
                 'button_fg': '#ffffff',
@@ -85,7 +88,8 @@ class CryptoTradingCalculator:
                 'success': '#66bb6a',
                 'error': '#ef5350',
                 'text_bg': '#2d2d2d',
-                'text_fg': '#e0e0e0'
+                'text_fg': '#e0e0e0',
+                'label_bg': '#2d2d2d'
             }
         }
         
@@ -96,6 +100,30 @@ class CryptoTradingCalculator:
         self.create_widgets()
         self.apply_theme()
         
+    def setup_fonts(self):
+        """Setup IranSans font"""
+        try:
+            # Try to load IranSans font
+            font_path = os.path.join(os.path.dirname(__file__), 'IRANSans.ttf')
+            if os.path.exists(font_path):
+                # Register font
+                self.persian_font = ('IRANSans', 10)
+                self.persian_font_bold = ('IRANSans', 10, 'bold')
+                self.persian_font_title = ('IRANSans', 18, 'bold')
+                self.persian_font_header = ('IRANSans', 13, 'bold')
+            else:
+                # Fallback to Tahoma
+                self.persian_font = ('Tahoma', 10)
+                self.persian_font_bold = ('Tahoma', 10, 'bold')
+                self.persian_font_title = ('Tahoma', 18, 'bold')
+                self.persian_font_header = ('Tahoma', 13, 'bold')
+        except:
+            # Final fallback
+            self.persian_font = ('Tahoma', 10)
+            self.persian_font_bold = ('Tahoma', 10, 'bold')
+            self.persian_font_title = ('Tahoma', 18, 'bold')
+            self.persian_font_header = ('Tahoma', 13, 'bold')
+    
     def create_widgets(self):
         # Main container
         self.main_container = tk.Frame(self.root)
@@ -108,11 +136,11 @@ class CryptoTradingCalculator:
         
         # Title
         title_label = tk.Label(self.top_bar, text=f"💰 ماشین حساب ترید کریپتو", 
-                              font=('Arial', 18, 'bold'))
+                              font=self.persian_font_title)
         title_label.pack(side=tk.LEFT, padx=20, pady=10)
         
         version_label = tk.Label(self.top_bar, text=f"v{VERSION}", 
-                                font=('Arial', 10), fg='gray')
+                                font=self.persian_font, fg='gray')
         version_label.pack(side=tk.LEFT, pady=10)
         
         # Top buttons
@@ -120,19 +148,19 @@ class CryptoTradingCalculator:
         btn_frame.pack(side=tk.RIGHT, padx=20, pady=10)
         
         self.theme_btn = ModernButton(btn_frame, text="🌙 دارک مود", 
-                                      command=self.toggle_theme, width=12)
+                                      command=self.toggle_theme, width=12, font=self.persian_font)
         self.theme_btn.pack(side=tk.LEFT, padx=5)
         
         settings_btn = ModernButton(btn_frame, text="⚙️ تنظیمات", 
-                                   command=self.show_settings, width=12)
+                                   command=self.show_settings, width=12, font=self.persian_font)
         settings_btn.pack(side=tk.LEFT, padx=5)
         
         history_btn = ModernButton(btn_frame, text="📊 تاریخچه", 
-                                  command=self.show_history, width=12)
+                                  command=self.show_history, width=12, font=self.persian_font)
         history_btn.pack(side=tk.LEFT, padx=5)
         
         charts_btn = ModernButton(btn_frame, text="📈 نمودارها", 
-                                 command=self.show_charts, width=12)
+                                 command=self.show_charts, width=12, font=self.persian_font)
         charts_btn.pack(side=tk.LEFT, padx=5)
         
         # Content area with scrollbar
@@ -159,6 +187,8 @@ class CryptoTradingCalculator:
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         
+        self.main_canvas = canvas
+        
         # Create cards
         self.create_exchange_card()
         self.create_capital_card()
@@ -176,7 +206,7 @@ class CryptoTradingCalculator:
         header.pack_propagate(False)
         
         header_label = tk.Label(header, text=f"{icon} {title}", 
-                               font=('Arial', 13, 'bold'))
+                               font=self.persian_font_header)
         header_label.pack(side=tk.LEFT, padx=15, pady=10)
         
         # Card body
@@ -193,16 +223,16 @@ class CryptoTradingCalculator:
         row1 = tk.Frame(body)
         row1.pack(fill=tk.X, pady=5)
         
-        tk.Label(row1, text="صرافی:", font=('Arial', 10)).pack(side=tk.LEFT, padx=(0, 10))
+        tk.Label(row1, text="صرافی:", font=self.persian_font).pack(side=tk.LEFT, padx=(0, 10))
         self.exchange_combo = ttk.Combobox(row1, values=list(self.exchanges.keys()), 
-                                          width=20, state="readonly", font=('Arial', 10))
+                                          width=20, state="readonly", font=self.persian_font)
         self.exchange_combo.set(self.config.selected_exchange)
         self.exchange_combo.pack(side=tk.LEFT, padx=5)
         self.exchange_combo.bind('<<ComboboxSelected>>', self.on_exchange_change)
         
-        tk.Label(row1, text="نوع سفارش:", font=('Arial', 10)).pack(side=tk.LEFT, padx=(20, 10))
+        tk.Label(row1, text="نوع سفارش:", font=self.persian_font).pack(side=tk.LEFT, padx=(20, 10))
         self.order_type_combo = ttk.Combobox(row1, values=["Maker", "Taker"], 
-                                             width=15, state="readonly", font=('Arial', 10))
+                                             width=15, state="readonly", font=self.persian_font)
         self.order_type_combo.set("Taker" if self.config.order_type == "taker" else "Maker")
         self.order_type_combo.pack(side=tk.LEFT, padx=5)
         self.order_type_combo.bind('<<ComboboxSelected>>', self.on_order_type_change)
@@ -211,17 +241,17 @@ class CryptoTradingCalculator:
         row2 = tk.Frame(body)
         row2.pack(fill=tk.X, pady=5)
         
-        tk.Label(row2, text="سمبل:", font=('Arial', 10)).pack(side=tk.LEFT, padx=(0, 10))
+        tk.Label(row2, text="سمبل:", font=self.persian_font).pack(side=tk.LEFT, padx=(0, 10))
         self.symbol_combo = ttk.Combobox(row2, values=self.api_manager.get_available_symbols(), 
-                                        width=20, state="readonly", font=('Arial', 10))
+                                        width=20, state="readonly", font=self.persian_font)
         self.symbol_combo.set('BTCUSDT')
         self.symbol_combo.pack(side=tk.LEFT, padx=5)
         
         self.live_price_btn = ModernButton(row2, text="💹 قیمت لحظه‌ای", 
-                                          command=self.get_live_price, width=15)
+                                          command=self.get_live_price, width=15, font=self.persian_font)
         self.live_price_btn.pack(side=tk.LEFT, padx=20)
         
-        self.live_price_label = tk.Label(row2, text="-", font=('Arial', 11, 'bold'))
+        self.live_price_label = tk.Label(row2, text="-", font=self.persian_font_bold)
         self.live_price_label.pack(side=tk.LEFT, padx=10)
         
     def create_capital_card(self):
@@ -233,23 +263,23 @@ class CryptoTradingCalculator:
             body.columnconfigure(i, weight=1)
         
         # Row 1
-        tk.Label(body, text="سرمایه کل (USDT):", font=('Arial', 10)).grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
-        self.capital_entry = tk.Entry(body, font=('Arial', 10), width=20)
+        tk.Label(body, text="سرمایه کل (USDT):", font=self.persian_font).grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        self.capital_entry = tk.Entry(body, font=self.persian_font, width=20)
         self.capital_entry.insert(0, str(self.config.capital))
         self.capital_entry.grid(row=0, column=1, sticky=tk.W, padx=5, pady=5)
         
-        tk.Label(body, text="درصد ریسک (%):", font=('Arial', 10)).grid(row=0, column=2, sticky=tk.W, padx=5, pady=5)
-        self.risk_entry = tk.Entry(body, font=('Arial', 10), width=20)
+        tk.Label(body, text="درصد ریسک (%):", font=self.persian_font).grid(row=0, column=2, sticky=tk.W, padx=5, pady=5)
+        self.risk_entry = tk.Entry(body, font=self.persian_font, width=20)
         self.risk_entry.insert(0, str(self.config.risk_percent))
         self.risk_entry.grid(row=0, column=3, sticky=tk.W, padx=5, pady=5)
         
         # Row 2
-        tk.Label(body, text="کارمزد (%):", font=('Arial', 10)).grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
-        self.fee_entry = tk.Entry(body, font=('Arial', 10), width=20)
+        tk.Label(body, text="کارمزد (%):", font=self.persian_font).grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
+        self.fee_entry = tk.Entry(body, font=self.persian_font, width=20)
         self.fee_entry.insert(0, str(self.config.fee_percent))
         self.fee_entry.grid(row=1, column=1, sticky=tk.W, padx=5, pady=5)
         
-        save_btn = ModernButton(body, text="💾 ذخیره تنظیمات", command=self.save_settings_clicked)
+        save_btn = ModernButton(body, text="💾 ذخیره تنظیمات", command=self.save_settings_clicked, font=self.persian_font)
         save_btn.grid(row=1, column=2, columnspan=2, padx=5, pady=5, sticky=tk.W)
         
     def create_trade_card(self):
@@ -261,44 +291,44 @@ class CryptoTradingCalculator:
             body.columnconfigure(i, weight=1)
         
         # Row 1
-        tk.Label(body, text="قیمت ورود:", font=('Arial', 10)).grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
-        self.entry_price = tk.Entry(body, font=('Arial', 10), width=18)
+        tk.Label(body, text="قیمت ورود:", font=self.persian_font).grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        self.entry_price = tk.Entry(body, font=self.persian_font, width=18)
         self.entry_price.grid(row=0, column=1, sticky=tk.W, padx=5, pady=5)
         
-        tk.Label(body, text="استاپ لاس (SL):", font=('Arial', 10)).grid(row=0, column=2, sticky=tk.W, padx=5, pady=5)
-        self.stop_loss = tk.Entry(body, font=('Arial', 10), width=18)
+        tk.Label(body, text="استاپ لاس (SL):", font=self.persian_font).grid(row=0, column=2, sticky=tk.W, padx=5, pady=5)
+        self.stop_loss = tk.Entry(body, font=self.persian_font, width=18)
         self.stop_loss.grid(row=0, column=3, sticky=tk.W, padx=5, pady=5)
         
         # Row 2
-        tk.Label(body, text="تیک پرافیت 1:", font=('Arial', 10)).grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
-        self.tp1_entry = tk.Entry(body, font=('Arial', 10), width=18)
+        tk.Label(body, text="تیک پرافیت 1:", font=self.persian_font).grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
+        self.tp1_entry = tk.Entry(body, font=self.persian_font, width=18)
         self.tp1_entry.grid(row=1, column=1, sticky=tk.W, padx=5, pady=5)
         self.tp_entries.append(self.tp1_entry)
         
-        tk.Label(body, text="تیک پرافیت 2:", font=('Arial', 10)).grid(row=1, column=2, sticky=tk.W, padx=5, pady=5)
-        self.tp2_entry = tk.Entry(body, font=('Arial', 10), width=18)
+        tk.Label(body, text="تیک پرافیت 2:", font=self.persian_font).grid(row=1, column=2, sticky=tk.W, padx=5, pady=5)
+        self.tp2_entry = tk.Entry(body, font=self.persian_font, width=18)
         self.tp2_entry.grid(row=1, column=3, sticky=tk.W, padx=5, pady=5)
         self.tp_entries.append(self.tp2_entry)
         
         # Row 3
-        tk.Label(body, text="تیک پرافیت 3:", font=('Arial', 10)).grid(row=2, column=0, sticky=tk.W, padx=5, pady=5)
-        self.tp3_entry = tk.Entry(body, font=('Arial', 10), width=18)
+        tk.Label(body, text="تیک پرافیت 3:", font=self.persian_font).grid(row=2, column=0, sticky=tk.W, padx=5, pady=5)
+        self.tp3_entry = tk.Entry(body, font=self.persian_font, width=18)
         self.tp3_entry.grid(row=2, column=1, sticky=tk.W, padx=5, pady=5)
         self.tp_entries.append(self.tp3_entry)
         
-        tk.Label(body, text="نوع معامله:", font=('Arial', 10)).grid(row=2, column=2, sticky=tk.W, padx=5, pady=5)
-        self.position_type = ttk.Combobox(body, values=["LONG", "SHORT"], width=16, state="readonly", font=('Arial', 10))
+        tk.Label(body, text="نوع معامله:", font=self.persian_font).grid(row=2, column=2, sticky=tk.W, padx=5, pady=5)
+        self.position_type = ttk.Combobox(body, values=["LONG", "SHORT"], width=16, state="readonly", font=self.persian_font)
         self.position_type.set("LONG")
         self.position_type.grid(row=2, column=3, sticky=tk.W, padx=5, pady=5)
         
         # Row 4
-        tk.Label(body, text="لوریج:", font=('Arial', 10)).grid(row=3, column=0, sticky=tk.W, padx=5, pady=5)
-        self.leverage = tk.Entry(body, font=('Arial', 10), width=18)
+        tk.Label(body, text="لوریج:", font=self.persian_font).grid(row=3, column=0, sticky=tk.W, padx=5, pady=5)
+        self.leverage = tk.Entry(body, font=self.persian_font, width=18)
         self.leverage.insert(0, "10")
         self.leverage.grid(row=3, column=1, sticky=tk.W, padx=5, pady=5)
         
-        tk.Label(body, text="یادداشت:", font=('Arial', 10)).grid(row=3, column=2, sticky=tk.W, padx=5, pady=5)
-        self.notes_entry = tk.Entry(body, font=('Arial', 10), width=18)
+        tk.Label(body, text="یادداشت:", font=self.persian_font).grid(row=3, column=2, sticky=tk.W, padx=5, pady=5)
+        self.notes_entry = tk.Entry(body, font=self.persian_font, width=18)
         self.notes_entry.grid(row=3, column=3, sticky=tk.W, padx=5, pady=5)
         
         # Calculate button
@@ -307,7 +337,7 @@ class CryptoTradingCalculator:
         
         self.calc_btn = ModernButton(calc_frame, text="🔢 محاسبه", 
                                      command=self.calculate, width=20, 
-                                     font=('Arial', 12, 'bold'))
+                                     font=self.persian_font_bold)
         self.calc_btn.pack()
         
     def create_results_card(self):
@@ -331,11 +361,11 @@ class CryptoTradingCalculator:
         btn_frame.pack(fill=tk.X, pady=(10, 0))
         
         export_btn = ModernButton(btn_frame, text="💾 Export CSV", 
-                                 command=self.export_csv, width=15)
+                                 command=self.export_csv, width=15, font=self.persian_font)
         export_btn.pack(side=tk.LEFT, padx=5)
         
         clear_btn = ModernButton(btn_frame, text="🗑️ پاک کردن نتایج", 
-                                command=self.clear_results, width=18)
+                                command=self.clear_results, width=18, font=self.persian_font)
         clear_btn.pack(side=tk.LEFT, padx=5)
         
     def toggle_theme(self):
@@ -353,6 +383,7 @@ class CryptoTradingCalculator:
         self.main_container.configure(bg=theme['bg'])
         self.top_bar.configure(bg=theme['card_bg'])
         self.scrollable_frame.configure(bg=theme['bg'])
+        self.main_canvas.configure(bg=theme['bg'])
         
         # Update theme button
         if self.current_theme == 'dark':
@@ -360,45 +391,55 @@ class CryptoTradingCalculator:
         else:
             self.theme_btn.configure(text="🌙 دارک مود")
         
-        # Apply to all labels
-        for widget in [self.top_bar, self.scrollable_frame]:
-            for child in widget.winfo_children():
-                self._apply_theme_recursive(child, theme)
+        # Apply to all widgets recursively
+        self._apply_theme_recursive(self.root, theme)
         
-        # Apply to cards
+        # Specifically update cards
         for card in [self.exchange_card, self.capital_card, self.trade_card, self.results_card]:
             card.configure(bg=theme['card_bg'], highlightbackground=theme['border'], highlightthickness=1)
-            for child in card.winfo_children():
-                self._apply_theme_recursive(child, theme)
+            self._apply_theme_recursive(card, theme)
         
         # Apply to results text
         self.results_text.configure(bg=theme['text_bg'], fg=theme['text_fg'], 
                                    insertbackground=theme['text_fg'])
         
-        # Apply to all buttons
-        for btn in [self.theme_btn, self.live_price_btn, self.calc_btn]:
-            btn.configure(bg=theme['button_bg'], fg=theme['button_fg'], 
-                         activebackground=theme['button_hover'], activeforeground=theme['button_fg'])
-        
     def _apply_theme_recursive(self, widget, theme):
         """Recursively apply theme to all widgets"""
-        widget_type = widget.winfo_class()
-        
-        if widget_type == 'Frame':
-            widget.configure(bg=theme['card_bg'])
-        elif widget_type == 'Label':
-            widget.configure(bg=theme['card_bg'], fg=theme['fg'])
-        elif widget_type == 'Entry':
-            widget.configure(bg=theme['input_bg'], fg=theme['input_fg'], 
-                           insertbackground=theme['input_fg'], relief=tk.FLAT, bd=1)
-        elif widget_type == 'Button':
-            if isinstance(widget, ModernButton):
-                widget.configure(bg=theme['button_bg'], fg=theme['button_fg'],
-                               activebackground=theme['button_hover'], activeforeground=theme['button_fg'])
-        
-        # Recursively apply to children
-        for child in widget.winfo_children():
-            self._apply_theme_recursive(child, theme)
+        try:
+            widget_type = widget.winfo_class()
+            
+            if widget_type == 'Frame':
+                widget.configure(bg=theme['card_bg'])
+            elif widget_type == 'Label':
+                widget.configure(bg=theme['label_bg'], fg=theme['fg'])
+            elif widget_type == 'Entry':
+                widget.configure(bg=theme['input_bg'], fg=theme['input_fg'], 
+                               insertbackground=theme['input_fg'], 
+                               disabledbackground=theme['input_bg'],
+                               disabledforeground=theme['input_fg'],
+                               relief=tk.FLAT, bd=2, highlightthickness=1,
+                               highlightbackground=theme['border'],
+                               highlightcolor=theme['accent'])
+            elif widget_type == 'Text':
+                widget.configure(bg=theme['text_bg'], fg=theme['text_fg'], 
+                               insertbackground=theme['text_fg'],
+                               selectbackground=theme['accent'],
+                               selectforeground=theme['button_fg'])
+            elif widget_type == 'Button':
+                if isinstance(widget, ModernButton):
+                    widget.configure(bg=theme['button_bg'], fg=theme['button_fg'],
+                                   activebackground=theme['button_hover'], 
+                                   activeforeground=theme['button_fg'])
+            elif widget_type == 'Canvas':
+                widget.configure(bg=theme['bg'], highlightthickness=0)
+            elif widget_type == 'Scrollbar':
+                widget.configure(bg=theme['card_bg'], troughcolor=theme['bg'])
+            
+            # Recursively apply to children
+            for child in widget.winfo_children():
+                self._apply_theme_recursive(child, theme)
+        except:
+            pass
     
     def on_exchange_change(self, event=None):
         exchange = self.exchange_combo.get()
@@ -605,56 +646,131 @@ class CryptoTradingCalculator:
             messagebox.showerror("خطا", f"خطایی رخ داد: {str(e)}")
     
     def show_settings(self):
-        """Show settings window"""
+        """Show comprehensive settings window"""
         settings_window = tk.Toplevel(self.root)
-        settings_window.title("⚙️ تنظیمات")
-        settings_window.geometry("600x400")
+        settings_window.title("⚙️ تنظیمات پیشرفته")
+        settings_window.geometry("700x600")
         settings_window.resizable(False, False)
         
         theme = self.themes[self.current_theme]
         settings_window.configure(bg=theme['bg'])
         
-        # Main frame
-        main_frame = tk.Frame(settings_window, bg=theme['card_bg'], padx=20, pady=20)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # Main frame with scrollbar
+        main_frame = tk.Frame(settings_window, bg=theme['bg'])
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        canvas = tk.Canvas(main_frame, bg=theme['bg'], highlightthickness=0)
+        scrollbar = tk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg=theme['card_bg'], padx=20, pady=20)
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        canvas.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+        scrollbar.pack(side="right", fill="y")
         
         # Title
-        title = tk.Label(main_frame, text="⚙️ تنظیمات پیشرفته", 
-                        font=('Arial', 16, 'bold'), bg=theme['card_bg'], fg=theme['fg'])
+        title = tk.Label(scrollable_frame, text="⚙️ تنظیمات پیشرفته", 
+                        font=self.persian_font_title, bg=theme['card_bg'], fg=theme['fg'])
         title.pack(pady=(0, 20))
         
-        # API Keys section
-        api_frame = tk.LabelFrame(main_frame, text="🔑 کلیدهای API", 
-                                 font=('Arial', 12, 'bold'), bg=theme['card_bg'], fg=theme['fg'])
-        api_frame.pack(fill=tk.X, pady=10)
+        # API Keys section for all exchanges
+        api_keys = {}
         
-        tk.Label(api_frame, text="Binance API Key:", bg=theme['card_bg'], fg=theme['fg']).pack(anchor=tk.W, padx=10, pady=5)
-        binance_key = tk.Entry(api_frame, width=50, bg=theme['input_bg'], fg=theme['input_fg'])
-        binance_key.pack(padx=10, pady=(0, 10))
+        exchanges_with_api = [
+            ("Binance", "binance"),
+            ("CoinEx", "coinex"),
+            ("Bybit", "bybit"),
+            ("OKX", "okx"),
+            ("KuCoin", "kucoin"),
+            ("Gate.io", "gateio"),
+            ("Bitget", "bitget"),
+            ("MEXC", "mexc")
+        ]
         
-        tk.Label(api_frame, text="Binance Secret Key:", bg=theme['card_bg'], fg=theme['fg']).pack(anchor=tk.W, padx=10, pady=5)
-        binance_secret = tk.Entry(api_frame, width=50, show='*', bg=theme['input_bg'], fg=theme['input_fg'])
-        binance_secret.pack(padx=10, pady=(0, 10))
+        for exchange_name, exchange_key in exchanges_with_api:
+            # Frame for each exchange
+            exchange_frame = tk.LabelFrame(scrollable_frame, text=f"🔑 {exchange_name} API", 
+                                          font=self.persian_font_bold, bg=theme['card_bg'], 
+                                          fg=theme['fg'], padx=10, pady=10)
+            exchange_frame.pack(fill=tk.X, pady=10)
+            
+            # API Key
+            tk.Label(exchange_frame, text="API Key:", bg=theme['card_bg'], 
+                    fg=theme['fg'], font=self.persian_font).pack(anchor=tk.W, pady=2)
+            api_key_entry = tk.Entry(exchange_frame, width=60, bg=theme['input_bg'], 
+                                    fg=theme['input_fg'], font=self.persian_font)
+            api_key_entry.pack(pady=(0, 5), fill=tk.X)
+            
+            # Secret Key
+            tk.Label(exchange_frame, text="Secret Key:", bg=theme['card_bg'], 
+                    fg=theme['fg'], font=self.persian_font).pack(anchor=tk.W, pady=2)
+            secret_key_entry = tk.Entry(exchange_frame, width=60, show='*', bg=theme['input_bg'], 
+                                       fg=theme['input_fg'], font=self.persian_font)
+            secret_key_entry.pack(pady=(0, 5), fill=tk.X)
+            
+            # Load from config if exists
+            saved_api = self.config.data.get('api_keys', {}).get(exchange_key, {})
+            if saved_api:
+                api_key_entry.insert(0, saved_api.get('key', ''))
+                secret_key_entry.insert(0, saved_api.get('secret', ''))
+            
+            api_keys[exchange_key] = {
+                'key': api_key_entry,
+                'secret': secret_key_entry
+            }
         
         # Other settings
-        other_frame = tk.LabelFrame(main_frame, text="🔧 سایر تنظیمات", 
-                                   font=('Arial', 12, 'bold'), bg=theme['card_bg'], fg=theme['fg'])
+        other_frame = tk.LabelFrame(scrollable_frame, text="🔧 سایر تنظیمات", 
+                                   font=self.persian_font_bold, bg=theme['card_bg'], 
+                                   fg=theme['fg'], padx=10, pady=10)
         other_frame.pack(fill=tk.X, pady=10)
         
-        tk.Label(other_frame, text="زمان به‌روزرسانی قیمت (ثانیه):", bg=theme['card_bg'], fg=theme['fg']).pack(anchor=tk.W, padx=10, pady=5)
-        refresh_rate = tk.Entry(other_frame, width=20, bg=theme['input_bg'], fg=theme['input_fg'])
-        refresh_rate.insert(0, "10")
-        refresh_rate.pack(anchor=tk.W, padx=10, pady=(0, 10))
+        tk.Label(other_frame, text="زمان به‌روزرسانی قیمت (ثانیه):", bg=theme['card_bg'], 
+                fg=theme['fg'], font=self.persian_font).pack(anchor=tk.W, pady=5)
+        refresh_rate = tk.Entry(other_frame, width=20, bg=theme['input_bg'], 
+                               fg=theme['input_fg'], font=self.persian_font)
+        refresh_rate.insert(0, str(self.config.data.get('refresh_rate', 10)))
+        refresh_rate.pack(anchor=tk.W, pady=(0, 10))
         
         # Save button
-        save_btn = ModernButton(main_frame, text="💾 ذخیره تنظیمات", 
-                               command=lambda: self._save_advanced_settings(settings_window), 
-                               width=20)
+        save_btn = ModernButton(scrollable_frame, text="💾 ذخیره تمام تنظیمات", 
+                               command=lambda: self._save_advanced_settings(
+                                   settings_window, api_keys, refresh_rate.get()), 
+                               width=25, font=self.persian_font_bold)
         save_btn.pack(pady=20)
         
-    def _save_advanced_settings(self, window):
-        messagebox.showinfo("موفق", "تنظیمات پیشرفته ذخیره شد!\n\n(این بخش در نسخه‌های بعدی کامل می‌شود)")
-        window.destroy()
+    def _save_advanced_settings(self, window, api_keys, refresh_rate):
+        """Save all API keys and settings"""
+        try:
+            # Save API keys
+            saved_keys = {}
+            for exchange_key, entries in api_keys.items():
+                api_key = entries['key'].get().strip()
+                secret_key = entries['secret'].get().strip()
+                if api_key or secret_key:
+                    saved_keys[exchange_key] = {
+                        'key': api_key,
+                        'secret': secret_key
+                    }
+            
+            # Update config
+            self.config.data['api_keys'] = saved_keys
+            self.config.data['refresh_rate'] = int(refresh_rate)
+            
+            # Save to file
+            with open('config.json', 'w', encoding='utf-8') as f:
+                json.dump(self.config.data, f, indent=4, ensure_ascii=False)
+            
+            messagebox.showinfo("موفق", f"تنظیمات ذخیره شد!\n\n🔑 {len(saved_keys)} صرافی API Key ذخیره شد")
+            window.destroy()
+        except Exception as e:
+            messagebox.showerror("خطا", f"خطا در ذخیره: {str(e)}")
     
     def show_history(self):
         """Show trade history"""
@@ -674,13 +790,15 @@ class CryptoTradingCalculator:
         header.pack(fill=tk.X, pady=(0, 10))
         
         title = tk.Label(header, text="📊 تاریخچه معاملات", 
-                        font=('Arial', 14, 'bold'), bg=theme['card_bg'], fg=theme['fg'])
+                        font=self.persian_font_header, bg=theme['card_bg'], fg=theme['fg'])
         title.pack(side=tk.LEFT)
         
-        export_btn = ModernButton(header, text="💾 Export", command=self.export_csv, width=12)
+        export_btn = ModernButton(header, text="💾 Export", command=self.export_csv, 
+                                 width=12, font=self.persian_font)
         export_btn.pack(side=tk.RIGHT, padx=5)
         
-        clear_btn = ModernButton(header, text="🗑️ پاک کردن", command=self.clear_history, width=12)
+        clear_btn = ModernButton(header, text="🗑️ پاک کردن", command=self.clear_history, 
+                                width=12, font=self.persian_font)
         clear_btn.pack(side=tk.RIGHT, padx=5)
         
         # Text widget
@@ -753,7 +871,7 @@ class CryptoTradingCalculator:
             canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         except:
             tk.Label(pnl_frame, text="⚠️ لطفا ابتدا اطلاعات معامله را وارد کنید", 
-                    font=('Arial', 14), bg=theme['card_bg'], fg=theme['fg']).pack(expand=True)
+                    font=self.persian_font_header, bg=theme['card_bg'], fg=theme['fg']).pack(expand=True)
         
         # Tab 2: History Chart
         history_frame = tk.Frame(notebook, bg=theme['card_bg'])
@@ -769,10 +887,10 @@ class CryptoTradingCalculator:
                     canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
             except:
                 tk.Label(history_frame, text="⚠️ خطا در نمایش نمودار تاریخچه", 
-                        font=('Arial', 14), bg=theme['card_bg'], fg=theme['fg']).pack(expand=True)
+                        font=self.persian_font_header, bg=theme['card_bg'], fg=theme['fg']).pack(expand=True)
         else:
             tk.Label(history_frame, text="⚠️ تاریخچه معاملاتی وجود ندارد", 
-                    font=('Arial', 14), bg=theme['card_bg'], fg=theme['fg']).pack(expand=True)
+                    font=self.persian_font_header, bg=theme['card_bg'], fg=theme['fg']).pack(expand=True)
     
     def export_csv(self):
         if not self.history.trades:

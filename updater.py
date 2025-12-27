@@ -1,72 +1,122 @@
+"""
+Auto-update system for Crypto Trading Calculator
+Fetches latest version from GitHub and updates files
+"""
+
 import requests
 import json
 import os
-import sys
-import subprocess
-from pathlib import Path
+from packaging import version
+
+VERSION = "1.5.0"
+REPO_OWNER = "Qfndr"
+REPO_NAME = "crypto-trading-calculator"
+GITHUB_API = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}"
 
 class Updater:
     def __init__(self):
-        self.github_repo = "Qfndr/crypto-trading-calculator"
-        self.api_base = f"https://api.github.com/repos/{self.github_repo}"
-        self.raw_base = f"https://raw.githubusercontent.com/{self.github_repo}"
-        self.current_version = self.get_current_version()
+        self.current_version = VERSION
+        self.github_api = GITHUB_API
     
-    def get_current_version(self):
-        """Get current version from VERSION file"""
+    def check_for_update(self):
+        """
+        Check if newer version exists on GitHub
+        Returns: dict with 'available', 'latest', 'current'
+        """
         try:
-            if os.path.exists('VERSION'):
-                with open('VERSION', 'r') as f:
-                    return f.read().strip()
-            return "1.4.0"
-        except:
-            return "1.4.0"
-    
-    def get_latest_version(self):
-        """Get latest version from GitHub"""
-        try:
-            response = requests.get(f"{self.api_base}/releases/latest", timeout=10)
+            # Get latest release
+            response = requests.get(f"{self.github_api}/releases/latest", timeout=10)
             if response.status_code == 200:
                 data = response.json()
-                return data.get('tag_name', '').replace('v', '')
-            return None
-        except:
-            return None
+                latest = data['tag_name'].replace('v', '')
+                
+                available = version.parse(latest) > version.parse(self.current_version)
+                
+                return {
+                    'available': available,
+                    'latest': latest,
+                    'current': self.current_version,
+                    'url': data['html_url'],
+                    'body': data.get('body', '')
+                }
+            else:
+                # If no releases, check tags
+                response = requests.get(f"{self.github_api}/tags", timeout=10)
+                if response.status_code == 200 and response.json():
+                    tags = response.json()
+                    latest = tags[0]['name'].replace('v', '')
+                    available = version.parse(latest) > version.parse(self.current_version)
+                    return {
+                        'available': available,
+                        'latest': latest,
+                        'current': self.current_version,
+                        'url': f"https://github.com/{REPO_OWNER}/{REPO_NAME}/releases",
+                        'body': ''
+                    }
+        except Exception as e:
+            print(f"Error checking for updates: {e}")
+        
+        return {
+            'available': False,
+            'latest': self.current_version,
+            'current': self.current_version,
+            'url': '',
+            'body': ''
+        }
     
     def get_all_versions(self):
-        """Get all available versions from GitHub"""
+        """
+        Get list of all available versions from GitHub
+        Returns: list of dicts with version info
+        """
+        versions = []
         try:
-            response = requests.get(f"{self.api_base}/releases", timeout=10)
-            if response.status_code == 200:
-                releases = response.json()
-                versions = []
-                for release in releases:
-                    tag = release.get('tag_name', '').replace('v', '')
-                    if tag:
+            # Try to get releases first
+            response = requests.get(f"{self.github_api}/releases", timeout=10)
+            if response.status_code == 200 and response.json():
+                for release in response.json():
+                    versions.append({
+                        'version': release['tag_name'].replace('v', ''),
+                        'name': release['name'],
+                        'date': release['published_at'][:10],
+                        'body': release.get('body', '')[:200]
+                    })
+            
+            # If no releases, get tags
+            if not versions:
+                response = requests.get(f"{self.github_api}/tags", timeout=10)
+                if response.status_code == 200:
+                    for tag in response.json()[:20]:  # Limit to 20 tags
                         versions.append({
-                            'version': tag,
-                            'name': release.get('name', tag),
-                            'published': release.get('published_at', ''),
-                            'body': release.get('body', '')
+                            'version': tag['name'].replace('v', ''),
+                            'name': tag['name'],
+                            'date': 'N/A',
+                            'body': 'No description'
                         })
-                return versions
-            return []
-        except:
-            return []
+        except Exception as e:
+            print(f"Error fetching versions: {e}")
+        
+        return versions
     
-    def get_file_from_github(self, filepath, version='main'):
-        """Download file from GitHub"""
+    def update_to_latest(self):
+        """
+        Update to latest version from GitHub
+        Downloads and replaces main Python files
+        """
         try:
-            url = f"{self.raw_base}/{version}/{filepath}"
-            response = requests.get(url, timeout=30)
-            if response.status_code == 200:
-                return response.text
-            return None
-        except:
-            return None
+            update_info = self.check_for_update()
+            if not update_info['available']:
+                return {'success': False, 'message': 'Already up to date'}
+            
+            return self.update_to_version(update_info['latest'])
+        except Exception as e:
+            return {'success': False, 'message': str(e)}
     
-    def download_version(self, version='main'):
-        """Download and install specific version"""
+    def update_to_version(self, target_version):
+        """
+        Update to specific version
+        Downloads files from GitHub repository
+        """
         files_to_update = [
             'main.py',
             'config.py',
@@ -74,72 +124,57 @@ class Updater:
             'api_manager.py',
             'chart_generator.py',
             'language.py',
-            'updater.py',
-            'VERSION',
-            'requirements.txt',
-            'README.md'
+            'updater.py'
         ]
         
-        updated_files = []
-        failed_files = []
+        updated = []
+        failed = []
         
-        for filepath in files_to_update:
-            try:
-                content = self.get_file_from_github(filepath, version)
-                if content:
-                    # Backup original file
-                    if os.path.exists(filepath):
-                        backup_path = f"{filepath}.backup"
-                        with open(filepath, 'r', encoding='utf-8') as f:
-                            backup_content = f.read()
-                        with open(backup_path, 'w', encoding='utf-8') as f:
-                            f.write(backup_content)
-                    
-                    # Write new file
-                    with open(filepath, 'w', encoding='utf-8') as f:
-                        f.write(content)
-                    
-                    updated_files.append(filepath)
-                else:
-                    failed_files.append(filepath)
-            except Exception as e:
-                failed_files.append(f"{filepath} ({str(e)})")
-        
-        return {
-            'success': len(failed_files) == 0,
-            'updated': updated_files,
-            'failed': failed_files
-        }
-    
-    def check_for_update(self):
-        """Check if update is available"""
-        latest = self.get_latest_version()
-        if latest and latest != self.current_version:
-            return {
-                'available': True,
-                'current': self.current_version,
-                'latest': latest
-            }
-        return {
-            'available': False,
-            'current': self.current_version,
-            'latest': latest or self.current_version
-        }
-    
-    def update_to_latest(self):
-        """Update to latest version"""
-        return self.download_version('main')
-    
-    def update_to_version(self, version):
-        """Update to specific version"""
-        return self.download_version(f"v{version}")
-    
-    def restart_app(self):
-        """Restart the application"""
         try:
-            python = sys.executable
-            script = sys.argv[0]
-            subprocess.Popen([python, script])
-            sys.exit(0)
-        except:
-            pass
+            for filename in files_to_update:
+                try:
+                    # Get file content from GitHub
+                    url = f"https://raw.githubusercontent.com/{REPO_OWNER}/{REPO_NAME}/main/{filename}"
+                    response = requests.get(url, timeout=15)
+                    
+                    if response.status_code == 200:
+                        # Backup original
+                        if os.path.exists(filename):
+                            backup_name = f"{filename}.backup"
+                            with open(filename, 'r', encoding='utf-8') as f:
+                                content = f.read()
+                            with open(backup_name, 'w', encoding='utf-8') as f:
+                                f.write(content)
+                        
+                        # Write new version
+                        with open(filename, 'w', encoding='utf-8') as f:
+                            f.write(response.text)
+                        
+                        updated.append(filename)
+                    else:
+                        failed.append(filename)
+                except Exception as e:
+                    print(f"Error updating {filename}: {e}")
+                    failed.append(filename)
+            
+            if updated:
+                return {
+                    'success': True,
+                    'updated': updated,
+                    'failed': failed,
+                    'message': f"Updated {len(updated)} files successfully"
+                }
+            else:
+                return {
+                    'success': False,
+                    'updated': [],
+                    'failed': failed,
+                    'message': 'No files were updated'
+                }
+        except Exception as e:
+            return {
+                'success': False,
+                'updated': updated,
+                'failed': failed,
+                'message': str(e)
+            }

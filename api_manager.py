@@ -1,197 +1,169 @@
+"""
+API Manager for Crypto Trading Calculator
+Handles connections to multiple exchanges
+"""
+
 import requests
-import time
 from datetime import datetime
 
 class APIManager:
     def __init__(self):
-        self.cache = {}
-        self.cache_duration = 10  # seconds
+        self.exchanges = {
+            'Binance': 'https://api.binance.com/api/v3/ticker/price?symbol=',
+            'Bybit': 'https://api.bybit.com/v2/public/tickers?symbol=',
+            'OKX': 'https://www.okx.com/api/v5/market/ticker?instId=',
+            'KuCoin': 'https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=',
+            'Gate.io': 'https://api.gateio.ws/api/v4/spot/tickers?currency_pair=',
+            'Bitget': 'https://api.bitget.com/api/spot/v1/market/ticker?symbol=',
+            'MEXC': 'https://api.mexc.com/api/v3/ticker/price?symbol=',
+            'CoinEx': 'https://api.coinex.com/v1/market/ticker?market=',
+        }
         
-        # Comprehensive symbol list (200+ popular coins)
+        # 200+ Most popular trading symbols
         self.symbols = [
-            # Top Market Cap
+            # Top 20 by Market Cap
             'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT',
-            'ADAUSDT', 'DOGEUSDT', 'TRXUSDT', 'TONUSDT', 'LINKUSDT',
-            'MATICUSDT', 'DOTUSDT', 'LTCUSDT', 'SHIBUSDT', 'AVAXUSDT',
-            'UNIUSDT', 'ATOMUSDT', 'XLMUSDT', 'ETCUSDT', 'FILUSDT',
+            'ADAUSDT', 'DOGEUSDT', 'AVAXUSDT', 'DOTUSDT', 'MATICUSDT',
+            'LINKUSDT', 'TRXUSDT', 'TONUSDT', 'UNIUSDT', 'ATOMUSDT',
+            'LTCUSDT', 'ETCUSDT', 'NEARUSDT', 'APTUSDT', 'FILUSDT',
             
             # DeFi Tokens
             'AAVEUSDT', 'MKRUSDT', 'COMPUSDT', 'SNXUSDT', 'CRVUSDT',
-            'SUSHIUSDT', '1INCHUSDT', 'YFIUSDT', 'RENUSDT', 'BALUSDT',
-            'BANDUSDT', 'CAKEUSDT', 'ALPACAUSDT', 'ALPINEUSDT',
+            'SUSHIUSDT', '1INCHUSDT', 'YFIUSDT', 'BALUSDT', 'UMAUMA',
+            'BANDUSDT', 'LRCUSDT', 'KSMUSDT', 'CAKEUSDT', 'LUNAUSDT',
             
-            # Layer 1 & Layer 2
-            'NEARUSDT', 'APTUSDT', 'SUIUSDT', 'ARBUSDT', 'OPUSDT',
-            'FTMUSDT', 'ALGOUSDT', 'ICPUSDT', 'EOSUSDT', 'HBARUSDT',
-            'VETUSDT', 'THETAUSDT', 'FLOWUSDT', 'EGLDUSDT', 'XTZUSDT',
-            'ZILUSDT', 'IOTAUSDT', 'QNTUSDT', 'KAVAUSDT', 'RUNEUSDT',
+            # Layer 1 Blockchains
+            'ARBUSDT', 'OPUSDT', 'SUIUSDT', 'APTUSDT', 'SEIUSDT',
+            'INJUSDT', 'TIAUSDT', 'CFXUSDT', 'FTMUSDT', 'HBARUSDT',
+            'ALGOUSDT', 'EGLDUSDT', 'ICPUSDT', 'FLOWUSDT', 'VETUSDT',
+            
+            # Layer 2 Solutions
+            'ARBUSDT', 'OPUSDT', 'MATICUSDT', 'IMXUSDT', 'LDOUSDT',
+            'METISUSDT', 'BELUSDT', 'STXUSDT', 'ZILUSDT', 'QNTUSDT',
             
             # Meme Coins
-            'PEPEUSDT', 'FLOKIUSDT', 'BONKUSDT', 'WIF', 'MEMEUSDT',
-            'BOMEUSDT', 'SATSUSDT', 'RATSUSDT', 'PEOPLEUSDT', 'LADYSUSDT',
-            'BABYDOGEUSDT', 'KISHUUSDT', 'ELON', 'DOGELON',
-            
-            # AI & Big Data
-            'FETUSDT', 'AGIXUSDT', 'OCEANUSDT', 'RNDR', 'GRTUSDT',
-            'INJUSDT', 'THETAUSDT', 'IQUSDT', 'PHBUSDT', 'AITOKENUSDT',
+            'SHIBUSDT', 'PEPEUSDT', 'FLOKIUSDT', 'BONKUSDT', 'WIFUSDT',
+            'DOGENUSDT', 'SATSUSDT', 'RATSUSDT', 'MEMEUSDT', 'NEIRO',
+            'TRUMPUSDT', 'MYROUSH', 'BOMEUSDT', 'MEWUSDT', 'MOGUSD',
             
             # Gaming & Metaverse
-            'SANDUSDT', 'MANAUSDT', 'AXSUSDT', 'ENJUSDT', 'GALAUSDT',
-            'CHZUSDT', 'THETAUSDT', 'GMTUSDT', 'APECOINUSDT', 'IMXUSDT',
-            'BLZUSDT', 'MAGICUSDT', 'MCUSDT', 'MOVRUSDT', 'ILVSDT',
+            'AXSUSDT', 'SANDUSDT', 'MANAUSDT', 'ENJUSDT', 'GALAUSDT',
+            'IMXUSDT', 'GMTUSDT', 'APEUSD T', 'BLZUSDT', 'ALICEUSDT',
+            'TLMUSDT', 'YGGUSDT', 'SLPUSDT', 'PAXGUSDT', 'RONINUSDT',
+            'PIXELUSDT', 'BEAMU SDT', 'WAXPUSDT', 'ILVUSDT', 'XETAUSDT',
             
-            # NFT Related
-            'BLZUSDT', 'THETAUSDT', 'FLOWUSDT', 'RAREBLOCKSUSDT',
+            # AI & Big Data
+            'AGIXUSDT', 'FETUSDT', 'OCEANUSDT', 'RNDRTU SDT', 'GRTUSDT',
+            'NMRUSDT', 'RLCUSDT', 'IQUSDT', 'AIUSDT', 'PHBUSDT',
+            'CTXCUSDT', 'VITEUSDT', 'COTIUSDT', 'ATAUSH', 'NKNUS DT',
+            
+            # NFT Tokens
+            'BLURUSH', 'LOOKSUSDT', 'X2Y2USDT', 'SUPERUSDT', 'RAREUSDT',
+            'THETAUSDT', 'CHZUSDT', 'NFTUSDT', 'AUCTIONUSDT', 'DEWUSDT',
             
             # Exchange Tokens
-            'BNBUSDT', 'FTMUSDT', 'CROUS', 'OKBUSDT', 'HTUSDT',
-            'KCSUSDT', 'BTRUSDT', 'VRAUSDT', 'NEXOUSDT', 'LUNCUSDT',
+            'BNBUSDT', 'CROUS DT', 'FTTUSDT', 'OKBUSDT', 'HTUSDT',
+            'KCSUSDT', 'GTUSDT', 'MXUSDT', 'BTTUSDT', 'WBETHUSDT',
             
             # Stablecoins & Wrapped
-            'USDCUSDT', 'BUSDUSDT', 'TUSDUSDT', 'USDPUSDT', 'PAXGUSDT',
-            'WBTCUSDT', 'WETHUSDT', 'RENBTCUSDT',
+            'USDCUSDT', 'BUSDUSDT', 'TUSDUSDT', 'DAIUSDT', 'USDPUSDT',
+            'WBTCUSDT', 'WETHUSDT', 'STETHUSDT', 'FRAXUSDT', 'USTCUSDT',
+            
+            # Oracle & Data
+            'LINKUSDT', 'BANDUSDT', 'TRBUS DT', 'DIAUSDT', 'APIUSDT',
             
             # Privacy Coins
-            'XMRUSDT', 'ZECUSDT', 'DASHUSDT', 'SCRTUSDT', 'BEAMUSDT',
+            'XMRUSDT', 'ZECUSDT', 'DASHUSDT', 'SCRTUSDT', 'XVGUSDT',
             
-            # Infrastructure
-            'RENDERUSDT', 'ARUSDT', 'STORJUSDT', 'KSMUSDT', 'LDOUSDT',
-            'GLMRUSDT', 'BATUSDT', 'ANTUSDT', 'CKBUSDT', 'CELRUSDT',
+            # Storage & Infrastructure
+            'FILUSDT', 'ARUSDT', 'STORJUSDT', 'IOTXUSDT', 'BTTUSDT',
+            'SCUSDT', 'ANKRUSDT', 'CKBUSDT', 'BLZUSDT', 'CELRUS DT',
             
-            # New & Trending
-            'JUPUSDT', 'PYTHUSDT', 'TIAUSDT', 'DYMUSDT', 'PORTALUSDT',
-            'PIXELUSDT', 'STRKUSDT', 'ACEUSDT', 'NFPUSDT', 'AIUSDT',
-            'XAIUSDT', 'MANTAUSDT', 'ALTUSDT', 'WLDUSDT', 'EDUUSDT',
+            # Real World Assets
+            'ONDOUSDT', 'RIOUSH', 'TRUSDT', 'GOLDUSDT', 'PAXGUSDT',
             
-            # Top 100 Extended
-            'BCHUSDT', 'NEOUSDT', 'LUNAUSDT', 'WAVESUSDT', 'ONTUSDT',
-            'OMGUSDT', 'ZILUSDT', 'ICXUSDT', 'IOSTUSDT', 'ZRXUSDT',
-            'LRCUSDT', 'QTUMUSDT', 'BATUSDT', 'SCUSDT', 'ZENCASHUSDT',
+            # Social & Content
+            'STEEMUSDT', 'HIVEUSD T', 'MASKUSDT', 'RALLYUSDT', 'CHZUSDT',
             
-            # Additional Popular
-            'ROSEUSDT', 'APEUSDT', 'LDOUSDT', 'WLDUSDT', 'ORDIUSDT',
-            'STXUSDT', 'SEIUSDT', 'TIAUSDT', 'BEAMXUSDT', 'PIVXUSDT',
-            'RDNTUSDT', 'GASUSDT', 'POLUSDT', 'MASKUSDT', 'LQTYUSDT',
-            
-            # More DeFi
-            'PENDLEUSDT', 'JOEUSDT', 'CVXUSDT', 'FXSUSDT', 'LDOUSDT',
-            'AGLDUSDT', 'PERPUSDT', 'RAREUSDT', 'LOKAUSDT', 'BADGERUSDT',
-            
-            # Solana Ecosystem
-            'JUPUSDT', 'JITOUSDT', 'PYTH', 'RAYDIUMUSDT', 'ORCANUSDT',
-            
-            # Arbitrum Ecosystem  
-            'ARBUSDT', 'GMXUSDT', 'MAGICUSDT', 'RDNTUSDT', 'PENDLEUSDT',
-            
-            # Base Ecosystem
-            'BRETTUSDT', 'DEGEN',
-            
-            # TON Ecosystem
-            'TONUSDT', 'NOTUSDT', 'DOGSUSDT',
-            
-            # Web3 & Social
-            'MASKUSDT', 'CYBERUSDT', 'IDUSDT', 'HIGHUSDT', 'VIDTUSDT',
-            
-            # Chinese Projects
-            'NEOUSDT', 'QTUMUSDT', 'ONTUSDT', 'VETUSDT', 'NULSUSDT',
-            
-            # Korean Projects  
-            'ICXUSDT', 'KLAYUSDT', 'METAUSDT',
-            
-            # Japanese Projects
-            'JASMUSDT', 'MONACOINUS',
-            
-            # Infrastructure & Tools
-            'CKBUSDT', 'CFXUSDT', 'BLURUSDT', 'COREUSDT', 'BELUSDT',
-            'NMRUSDT', 'NEOUSDT', 'ONGUSDT', 'FXSUSDT', 'CTXCUSDT',
-            
-            # Newer Launches
-            'ACEUSDT', 'NFPUSDT', 'AIUSDT', 'XAIUSDT', 'MANTAUSDT',
-            'ALTUSDT', 'JUPTUSDT', 'PYTHUSDT', 'DYMUSDT', 'PIXELUSDT',
+            # New Trending (2024-2025)
+            'JUPUSDT', 'WUSDT', 'PYTHUSDT', 'DYMUSH', 'ALTUSDT',
+            'TIAUSDT', 'XAIUSDT', 'ACEUSDT', 'NFPUSDT', 'AIUSDT',
             'PORTALUSDT', 'PDAUSDT', 'BOMEUSDT', 'ETHFIUSDT', 'ENAUSDT',
             
-            # Legacy but still active
-            'XEMUSDT', 'DGBUSDT', 'RVNUSDT', 'SYSUSDT', 'GRSUSDT',
-            
-            # Additional
-            '1000PEPEUSDT', '1000FLOKIUSDT', '1000BONKUSDT', '1000SHIBUSDT',
-            '1000LUNCUSDT', '1000XECUSDT',
+            # Additional Popular
+            'CELOUSDT', 'WAVESUSDT', 'ONTUSDT', 'RVNUSDT', 'KAVAUSDT',
+            'ZILUSDT', 'ICXUSDT', 'IOSTUSDT', 'OMGUSDT', 'OGNUSDT',
+            'LSKUSDT', 'ZENUSDT', 'QTUMUS DT', 'BATUSDT', 'REPUSDT',
         ]
         
-        # Remove duplicates and sort
-        self.symbols = sorted(list(set(self.symbols)))
-    
     def get_available_symbols(self):
-        """Return list of available symbols"""
-        return self.symbols
+        """Return list of available trading symbols"""
+        return sorted(self.symbols)
     
     def get_price(self, exchange, symbol):
-        """Get current price from exchange API"""
-        # Check cache
-        cache_key = f"{exchange}_{symbol}"
-        if cache_key in self.cache:
-            cached_data = self.cache[cache_key]
-            if time.time() - cached_data['time'] < self.cache_duration:
-                return cached_data['price']
-        
+        """
+        Get current price for symbol from specified exchange
+        Returns: float price or None if error
+        """
         try:
-            price = None
+            if exchange not in self.exchanges:
+                return None
             
-            if exchange == 'Binance':
-                price = self._get_binance_price(symbol)
-            elif exchange == 'CoinEx':
-                price = self._get_coinex_price(symbol)
-            elif exchange == 'Bybit':
-                price = self._get_bybit_price(symbol)
+            url = self.exchanges[exchange] + symbol
+            response = requests.get(url, timeout=10)
             
-            if price:
-                self.cache[cache_key] = {
-                    'price': price,
-                    'time': time.time()
-                }
-                return price
-            
-            return None
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Parse based on exchange
+                if exchange == 'Binance':
+                    return float(data['price'])
+                elif exchange == 'Bybit':
+                    if 'result' in data:
+                        return float(data['result'][0]['last_price'])
+                elif exchange == 'OKX':
+                    if 'data' in data and len(data['data']) > 0:
+                        return float(data['data'][0]['last'])
+                elif exchange == 'KuCoin':
+                    if 'data' in data:
+                        return float(data['data']['price'])
+                elif exchange == 'Gate.io':
+                    if len(data) > 0:
+                        return float(data[0]['last'])
+                elif exchange == 'Bitget':
+                    if 'data' in data:
+                        return float(data['data']['close'])
+                elif exchange == 'MEXC':
+                    return float(data['price'])
+                elif exchange == 'CoinEx':
+                    if 'data' in data and 'ticker' in data['data']:
+                        return float(data['data']['ticker']['last'])
         except Exception as e:
-            print(f"Error fetching price: {e}")
+            print(f"Error fetching price from {exchange}: {e}")
             return None
-    
-    def _get_binance_price(self, symbol):
-        """Get price from Binance"""
-        try:
-            url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
-            response = requests.get(url, timeout=5)
-            if response.status_code == 200:
-                data = response.json()
-                return float(data['price'])
-        except:
-            pass
+        
         return None
     
-    def _get_coinex_price(self, symbol):
-        """Get price from CoinEx"""
+    def get_24h_stats(self, exchange, symbol):
+        """
+        Get 24h statistics (high, low, volume, change)
+        Returns: dict with stats or None
+        """
         try:
-            # CoinEx uses different format
-            symbol_formatted = symbol.replace('USDT', '_USDT')
-            url = f"https://api.coinex.com/v1/market/ticker?market={symbol_formatted}"
-            response = requests.get(url, timeout=5)
-            if response.status_code == 200:
-                data = response.json()
-                if data['code'] == 0:
-                    return float(data['data']['ticker']['last'])
-        except:
-            pass
-        return None
-    
-    def _get_bybit_price(self, symbol):
-        """Get price from Bybit"""
-        try:
-            url = f"https://api.bybit.com/v5/market/tickers?category=spot&symbol={symbol}"
-            response = requests.get(url, timeout=5)
-            if response.status_code == 200:
-                data = response.json()
-                if data['retCode'] == 0 and data['result']['list']:
-                    return float(data['result']['list'][0]['lastPrice'])
-        except:
-            pass
+            if exchange == 'Binance':
+                url = f"https://api.binance.com/api/v3/ticker/24hr?symbol={symbol}"
+                response = requests.get(url, timeout=10)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    return {
+                        'high': float(data['highPrice']),
+                        'low': float(data['lowPrice']),
+                        'volume': float(data['volume']),
+                        'change': float(data['priceChangePercent'])
+                    }
+        except Exception as e:
+            print(f"Error fetching 24h stats: {e}")
+            return None
+        
         return None

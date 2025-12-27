@@ -7,10 +7,12 @@ from config import Config
 from trade_history import TradeHistory
 from api_manager import APIManager
 from chart_generator import ChartGenerator
+from language import Language
+from updater import Updater
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import threading
 
-VERSION = "1.3.0"
+VERSION = "1.4.0"
 
 class ModernButton(tk.Button):
     def __init__(self, master, **kwargs):
@@ -26,7 +28,17 @@ class ModernButton(tk.Button):
 class CryptoTradingCalculator:
     def __init__(self, root):
         self.root = root
-        self.root.title(f"ماشین حساب ترید کریپتو v{VERSION}")
+        
+        # Initialize language system
+        self.language = Language()
+        self.updater = Updater()
+        
+        # Load saved language
+        saved_lang = self.load_language_preference()
+        if saved_lang:
+            self.language.set_language(saved_lang)
+        
+        self.root.title(f"{self.language.get('app_title')} v{VERSION}")
         self.root.geometry("1200x800")
         self.root.minsize(1000, 700)
         
@@ -99,26 +111,91 @@ class CryptoTradingCalculator:
         
         self.create_widgets()
         self.apply_theme()
+        self.update_ui_language()
+        
+    def load_language_preference(self):
+        """Load saved language preference"""
+        try:
+            if os.path.exists('config.json'):
+                with open('config.json', 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                    return config.get('language', 'fa')
+        except:
+            pass
+        return 'fa'
+    
+    def save_language_preference(self):
+        """Save language preference"""
+        try:
+            config_data = {}
+            if os.path.exists('config.json'):
+                with open('config.json', 'r', encoding='utf-8') as f:
+                    config_data = json.load(f)
+            
+            config_data['language'] = self.language.current
+            
+            with open('config.json', 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, indent=4, ensure_ascii=False)
+        except:
+            pass
+    
+    def toggle_language(self):
+        """Switch between Persian and English"""
+        new_lang = 'en' if self.language.current == 'fa' else 'fa'
+        self.language.set_language(new_lang)
+        self.save_language_preference()
+        self.update_ui_language()
+        self.root.title(f"{self.language.get('app_title')} v{VERSION}")
+    
+    def update_ui_language(self):
+        """Update all UI text with current language"""
+        try:
+            # Update theme button
+            if self.current_theme == 'dark':
+                self.theme_btn.configure(text=f"☀️ {self.language.get('light_mode')}")
+            else:
+                self.theme_btn.configure(text=f"🌙 {self.language.get('dark_mode')}")
+            
+            # Update language button
+            if self.language.current == 'fa':
+                self.lang_btn.configure(text="🌍 English")
+            else:
+                self.lang_btn.configure(text="🌍 فارسی")
+            
+            # Update other buttons
+            self.settings_btn.configure(text=f"⚙️ {self.language.get('settings')}")
+            self.history_btn.configure(text=f"📊 {self.language.get('history')}")
+            self.charts_btn.configure(text=f"📈 {self.language.get('charts')}")
+            self.update_btn.configure(text=f"🔄 {self.language.get('update')}")
+            
+            # Update live price button
+            self.live_price_btn.configure(text=f"💹 {self.language.get('live_price')}")
+            
+            # Update calculate button
+            self.calc_btn.configure(text=f"🔢 {self.language.get('calculate')}")
+            
+            # Update result buttons
+            self.export_btn.configure(text=f"💾 {self.language.get('export_csv')}")
+            self.clear_btn.configure(text=f"🗑️ {self.language.get('clear_results')}")
+            
+        except:
+            pass
         
     def setup_fonts(self):
         """Setup IranSans font"""
         try:
-            # Try to load IranSans font
             font_path = os.path.join(os.path.dirname(__file__), 'IRANSans.ttf')
             if os.path.exists(font_path):
-                # Register font
                 self.persian_font = ('IRANSans', 10)
                 self.persian_font_bold = ('IRANSans', 10, 'bold')
                 self.persian_font_title = ('IRANSans', 18, 'bold')
                 self.persian_font_header = ('IRANSans', 13, 'bold')
             else:
-                # Fallback to Tahoma
                 self.persian_font = ('Tahoma', 10)
                 self.persian_font_bold = ('Tahoma', 10, 'bold')
                 self.persian_font_title = ('Tahoma', 18, 'bold')
                 self.persian_font_header = ('Tahoma', 13, 'bold')
         except:
-            # Final fallback
             self.persian_font = ('Tahoma', 10)
             self.persian_font_bold = ('Tahoma', 10, 'bold')
             self.persian_font_title = ('Tahoma', 18, 'bold')
@@ -135,7 +212,7 @@ class CryptoTradingCalculator:
         self.top_bar.pack_propagate(False)
         
         # Title
-        title_label = tk.Label(self.top_bar, text=f"💰 ماشین حساب ترید کریپتو", 
+        title_label = tk.Label(self.top_bar, text=f"💰 {self.language.get('app_title')}", 
                               font=self.persian_font_title)
         title_label.pack(side=tk.LEFT, padx=20, pady=10)
         
@@ -151,17 +228,25 @@ class CryptoTradingCalculator:
                                       command=self.toggle_theme, width=12, font=self.persian_font)
         self.theme_btn.pack(side=tk.LEFT, padx=5)
         
-        settings_btn = ModernButton(btn_frame, text="⚙️ تنظیمات", 
+        self.settings_btn = ModernButton(btn_frame, text="⚙️ تنظیمات", 
                                    command=self.show_settings, width=12, font=self.persian_font)
-        settings_btn.pack(side=tk.LEFT, padx=5)
+        self.settings_btn.pack(side=tk.LEFT, padx=5)
         
-        history_btn = ModernButton(btn_frame, text="📊 تاریخچه", 
+        self.history_btn = ModernButton(btn_frame, text="📊 تاریخچه", 
                                   command=self.show_history, width=12, font=self.persian_font)
-        history_btn.pack(side=tk.LEFT, padx=5)
+        self.history_btn.pack(side=tk.LEFT, padx=5)
         
-        charts_btn = ModernButton(btn_frame, text="📈 نمودارها", 
+        self.charts_btn = ModernButton(btn_frame, text="📈 نمودارها", 
                                  command=self.show_charts, width=12, font=self.persian_font)
-        charts_btn.pack(side=tk.LEFT, padx=5)
+        self.charts_btn.pack(side=tk.LEFT, padx=5)
+        
+        self.lang_btn = ModernButton(btn_frame, text="🌍 English", 
+                                     command=self.toggle_language, width=12, font=self.persian_font)
+        self.lang_btn.pack(side=tk.LEFT, padx=5)
+        
+        self.update_btn = ModernButton(btn_frame, text="🔄 آپدیت", 
+                                      command=self.show_update_manager, width=12, font=self.persian_font)
+        self.update_btn.pack(side=tk.LEFT, padx=5)
         
         # Content area with scrollbar
         content_frame = tk.Frame(self.main_container)
@@ -216,21 +301,21 @@ class CryptoTradingCalculator:
         return card, body
     
     def create_exchange_card(self):
-        card, body = self.create_card("انتخاب صرافی و سمبل", "🏦")
+        card, body = self.create_card(self.language.get('exchange_symbol'), "🏦")
         self.exchange_card = card
         
         # Row 1: Exchange and Order Type
         row1 = tk.Frame(body)
         row1.pack(fill=tk.X, pady=5)
         
-        tk.Label(row1, text="صرافی:", font=self.persian_font).pack(side=tk.LEFT, padx=(0, 10))
+        tk.Label(row1, text=f"{self.language.get('exchange')}:", font=self.persian_font).pack(side=tk.LEFT, padx=(0, 10))
         self.exchange_combo = ttk.Combobox(row1, values=list(self.exchanges.keys()), 
                                           width=20, state="readonly", font=self.persian_font)
         self.exchange_combo.set(self.config.selected_exchange)
         self.exchange_combo.pack(side=tk.LEFT, padx=5)
         self.exchange_combo.bind('<<ComboboxSelected>>', self.on_exchange_change)
         
-        tk.Label(row1, text="نوع سفارش:", font=self.persian_font).pack(side=tk.LEFT, padx=(20, 10))
+        tk.Label(row1, text=f"{self.language.get('order_type')}:", font=self.persian_font).pack(side=tk.LEFT, padx=(20, 10))
         self.order_type_combo = ttk.Combobox(row1, values=["Maker", "Taker"], 
                                              width=15, state="readonly", font=self.persian_font)
         self.order_type_combo.set("Taker" if self.config.order_type == "taker" else "Maker")
@@ -241,13 +326,13 @@ class CryptoTradingCalculator:
         row2 = tk.Frame(body)
         row2.pack(fill=tk.X, pady=5)
         
-        tk.Label(row2, text="سمبل:", font=self.persian_font).pack(side=tk.LEFT, padx=(0, 10))
+        tk.Label(row2, text=f"{self.language.get('symbol')}:", font=self.persian_font).pack(side=tk.LEFT, padx=(0, 10))
         self.symbol_combo = ttk.Combobox(row2, values=self.api_manager.get_available_symbols(), 
                                         width=20, state="readonly", font=self.persian_font)
         self.symbol_combo.set('BTCUSDT')
         self.symbol_combo.pack(side=tk.LEFT, padx=5)
         
-        self.live_price_btn = ModernButton(row2, text="💹 قیمت لحظه‌ای", 
+        self.live_price_btn = ModernButton(row2, text=f"💹 {self.language.get('live_price')}", 
                                           command=self.get_live_price, width=15, font=self.persian_font)
         self.live_price_btn.pack(side=tk.LEFT, padx=20)
         
@@ -255,7 +340,7 @@ class CryptoTradingCalculator:
         self.live_price_label.pack(side=tk.LEFT, padx=10)
         
     def create_capital_card(self):
-        card, body = self.create_card("تنظیمات سرمایه و ریسک", "💰")
+        card, body = self.create_card(self.language.get('capital_risk'), "💰")
         self.capital_card = card
         
         # Grid layout
@@ -263,27 +348,27 @@ class CryptoTradingCalculator:
             body.columnconfigure(i, weight=1)
         
         # Row 1
-        tk.Label(body, text="سرمایه کل (USDT):", font=self.persian_font).grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        tk.Label(body, text=f"{self.language.get('total_capital')}:", font=self.persian_font).grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
         self.capital_entry = tk.Entry(body, font=self.persian_font, width=20)
         self.capital_entry.insert(0, str(self.config.capital))
         self.capital_entry.grid(row=0, column=1, sticky=tk.W, padx=5, pady=5)
         
-        tk.Label(body, text="درصد ریسک (%):", font=self.persian_font).grid(row=0, column=2, sticky=tk.W, padx=5, pady=5)
+        tk.Label(body, text=f"{self.language.get('risk_percent')}:", font=self.persian_font).grid(row=0, column=2, sticky=tk.W, padx=5, pady=5)
         self.risk_entry = tk.Entry(body, font=self.persian_font, width=20)
         self.risk_entry.insert(0, str(self.config.risk_percent))
         self.risk_entry.grid(row=0, column=3, sticky=tk.W, padx=5, pady=5)
         
         # Row 2
-        tk.Label(body, text="کارمزد (%):", font=self.persian_font).grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
+        tk.Label(body, text=f"{self.language.get('fee_percent')}:", font=self.persian_font).grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
         self.fee_entry = tk.Entry(body, font=self.persian_font, width=20)
         self.fee_entry.insert(0, str(self.config.fee_percent))
         self.fee_entry.grid(row=1, column=1, sticky=tk.W, padx=5, pady=5)
         
-        save_btn = ModernButton(body, text="💾 ذخیره تنظیمات", command=self.save_settings_clicked, font=self.persian_font)
+        save_btn = ModernButton(body, text=f"💾 {self.language.get('save_settings')}", command=self.save_settings_clicked, font=self.persian_font)
         save_btn.grid(row=1, column=2, columnspan=2, padx=5, pady=5, sticky=tk.W)
         
     def create_trade_card(self):
-        card, body = self.create_card("اطلاعات معامله", "📊")
+        card, body = self.create_card(self.language.get('trade_info'), "📊")
         self.trade_card = card
         
         # Grid layout
@@ -291,43 +376,43 @@ class CryptoTradingCalculator:
             body.columnconfigure(i, weight=1)
         
         # Row 1
-        tk.Label(body, text="قیمت ورود:", font=self.persian_font).grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        tk.Label(body, text=f"{self.language.get('entry_price')}:", font=self.persian_font).grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
         self.entry_price = tk.Entry(body, font=self.persian_font, width=18)
         self.entry_price.grid(row=0, column=1, sticky=tk.W, padx=5, pady=5)
         
-        tk.Label(body, text="استاپ لاس (SL):", font=self.persian_font).grid(row=0, column=2, sticky=tk.W, padx=5, pady=5)
+        tk.Label(body, text=f"{self.language.get('stop_loss')}:", font=self.persian_font).grid(row=0, column=2, sticky=tk.W, padx=5, pady=5)
         self.stop_loss = tk.Entry(body, font=self.persian_font, width=18)
         self.stop_loss.grid(row=0, column=3, sticky=tk.W, padx=5, pady=5)
         
         # Row 2
-        tk.Label(body, text="تیک پرافیت 1:", font=self.persian_font).grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
+        tk.Label(body, text=f"{self.language.get('take_profit')} 1:", font=self.persian_font).grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
         self.tp1_entry = tk.Entry(body, font=self.persian_font, width=18)
         self.tp1_entry.grid(row=1, column=1, sticky=tk.W, padx=5, pady=5)
         self.tp_entries.append(self.tp1_entry)
         
-        tk.Label(body, text="تیک پرافیت 2:", font=self.persian_font).grid(row=1, column=2, sticky=tk.W, padx=5, pady=5)
+        tk.Label(body, text=f"{self.language.get('take_profit')} 2:", font=self.persian_font).grid(row=1, column=2, sticky=tk.W, padx=5, pady=5)
         self.tp2_entry = tk.Entry(body, font=self.persian_font, width=18)
         self.tp2_entry.grid(row=1, column=3, sticky=tk.W, padx=5, pady=5)
         self.tp_entries.append(self.tp2_entry)
         
         # Row 3
-        tk.Label(body, text="تیک پرافیت 3:", font=self.persian_font).grid(row=2, column=0, sticky=tk.W, padx=5, pady=5)
+        tk.Label(body, text=f"{self.language.get('take_profit')} 3:", font=self.persian_font).grid(row=2, column=0, sticky=tk.W, padx=5, pady=5)
         self.tp3_entry = tk.Entry(body, font=self.persian_font, width=18)
         self.tp3_entry.grid(row=2, column=1, sticky=tk.W, padx=5, pady=5)
         self.tp_entries.append(self.tp3_entry)
         
-        tk.Label(body, text="نوع معامله:", font=self.persian_font).grid(row=2, column=2, sticky=tk.W, padx=5, pady=5)
+        tk.Label(body, text=f"{self.language.get('position_type')}:", font=self.persian_font).grid(row=2, column=2, sticky=tk.W, padx=5, pady=5)
         self.position_type = ttk.Combobox(body, values=["LONG", "SHORT"], width=16, state="readonly", font=self.persian_font)
         self.position_type.set("LONG")
         self.position_type.grid(row=2, column=3, sticky=tk.W, padx=5, pady=5)
         
         # Row 4
-        tk.Label(body, text="لوریج:", font=self.persian_font).grid(row=3, column=0, sticky=tk.W, padx=5, pady=5)
+        tk.Label(body, text=f"{self.language.get('leverage')}:", font=self.persian_font).grid(row=3, column=0, sticky=tk.W, padx=5, pady=5)
         self.leverage = tk.Entry(body, font=self.persian_font, width=18)
         self.leverage.insert(0, "10")
         self.leverage.grid(row=3, column=1, sticky=tk.W, padx=5, pady=5)
         
-        tk.Label(body, text="یادداشت:", font=self.persian_font).grid(row=3, column=2, sticky=tk.W, padx=5, pady=5)
+        tk.Label(body, text=f"{self.language.get('notes')}:", font=self.persian_font).grid(row=3, column=2, sticky=tk.W, padx=5, pady=5)
         self.notes_entry = tk.Entry(body, font=self.persian_font, width=18)
         self.notes_entry.grid(row=3, column=3, sticky=tk.W, padx=5, pady=5)
         
@@ -335,13 +420,13 @@ class CryptoTradingCalculator:
         calc_frame = tk.Frame(body)
         calc_frame.grid(row=4, column=0, columnspan=4, pady=20)
         
-        self.calc_btn = ModernButton(calc_frame, text="🔢 محاسبه", 
+        self.calc_btn = ModernButton(calc_frame, text=f"🔢 {self.language.get('calculate')}", 
                                      command=self.calculate, width=20, 
                                      font=self.persian_font_bold)
         self.calc_btn.pack()
         
     def create_results_card(self):
-        card, body = self.create_card("نتایج محاسبات", "📋")
+        card, body = self.create_card(self.language.get('results'), "📋")
         self.results_card = card
         
         # Results text widget
@@ -360,17 +445,144 @@ class CryptoTradingCalculator:
         btn_frame = tk.Frame(body)
         btn_frame.pack(fill=tk.X, pady=(10, 0))
         
-        export_btn = ModernButton(btn_frame, text="💾 Export CSV", 
+        self.export_btn = ModernButton(btn_frame, text=f"💾 {self.language.get('export_csv')}", 
                                  command=self.export_csv, width=15, font=self.persian_font)
-        export_btn.pack(side=tk.LEFT, padx=5)
+        self.export_btn.pack(side=tk.LEFT, padx=5)
         
-        clear_btn = ModernButton(btn_frame, text="🗑️ پاک کردن نتایج", 
+        self.clear_btn = ModernButton(btn_frame, text=f"🗑️ {self.language.get('clear_results')}", 
                                 command=self.clear_results, width=18, font=self.persian_font)
-        clear_btn.pack(side=tk.LEFT, padx=5)
+        self.clear_btn.pack(side=tk.LEFT, padx=5)
+        
+    def show_update_manager(self):
+        """Show update manager window"""
+        update_window = tk.Toplevel(self.root)
+        update_window.title(self.language.get('update_manager'))
+        update_window.geometry("600x700")
+        update_window.resizable(False, False)
+        
+        theme = self.themes[self.current_theme]
+        update_window.configure(bg=theme['card_bg'])
+        
+        # Main frame
+        main_frame = tk.Frame(update_window, bg=theme['card_bg'], padx=20, pady=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Title
+        title = tk.Label(main_frame, text=f"🔄 {self.language.get('update_manager')}", 
+                        font=self.persian_font_title, bg=theme['card_bg'], fg=theme['fg'])
+        title.pack(pady=(0, 20))
+        
+        # Current version
+        current_frame = tk.Frame(main_frame, bg=theme['card_bg'])
+        current_frame.pack(fill=tk.X, pady=10)
+        
+        tk.Label(current_frame, text=f"{self.language.get('current_version')}: v{VERSION}", 
+                font=self.persian_font_bold, bg=theme['card_bg'], fg=theme['accent']).pack(anchor=tk.W)
+        
+        # Check update button and status
+        check_frame = tk.Frame(main_frame, bg=theme['card_bg'])
+        check_frame.pack(fill=tk.X, pady=10)
+        
+        status_label = tk.Label(check_frame, text=self.language.get('checking_update'), 
+                               font=self.persian_font, bg=theme['card_bg'], fg=theme['fg'])
+        status_label.pack(anchor=tk.W, pady=5)
+        
+        # Check for update
+        def check_update():
+            status_label.config(text=f"⏳ {self.language.get('checking_update')}")
+            update_window.update()
+            
+            update_info = self.updater.check_for_update()
+            
+            if update_info['available']:
+                status_label.config(text=f"✅ {self.language.get('update_available')}\n{self.language.get('latest_version')}: v{update_info['latest']}")
+                update_btn.config(state=tk.NORMAL)
+            else:
+                status_label.config(text=f"✅ {self.language.get('up_to_date')}")
+                update_btn.config(state=tk.DISABLED)
+        
+        # Update button
+        update_btn = ModernButton(check_frame, text=f"⬆️ {self.language.get('update_now')}", 
+                                 command=lambda: self.perform_update(status_label), 
+                                 width=20, font=self.persian_font_bold, state=tk.DISABLED)
+        update_btn.pack(pady=10)
+        
+        # Separator
+        ttk.Separator(main_frame, orient='horizontal').pack(fill=tk.X, pady=20)
+        
+        # Version selector
+        selector_label = tk.Label(main_frame, text=self.language.get('select_version'), 
+                                 font=self.persian_font_header, bg=theme['card_bg'], fg=theme['fg'])
+        selector_label.pack(anchor=tk.W, pady=(0, 10))
+        
+        # List of versions
+        list_frame = tk.Frame(main_frame, bg=theme['card_bg'])
+        list_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+        
+        versions_list = tk.Listbox(list_frame, height=10, font=self.persian_font,
+                                   bg=theme['input_bg'], fg=theme['input_fg'])
+        versions_list.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        versions_scroll = tk.Scrollbar(list_frame, orient="vertical", command=versions_list.yview)
+        versions_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        versions_list.config(yscrollcommand=versions_scroll.set)
+        
+        # Load versions
+        def load_versions():
+            versions = self.updater.get_all_versions()
+            for v in versions:
+                versions_list.insert(tk.END, f"v{v['version']} - {v['name']}")
+        
+        # Install selected version
+        def install_selected():
+            selection = versions_list.curselection()
+            if not selection:
+                messagebox.showwarning(self.language.get('info'), "Please select a version")
+                return
+            
+            selected_text = versions_list.get(selection[0])
+            version = selected_text.split(' ')[0].replace('v', '')
+            
+            if messagebox.askyesno(self.language.get('confirm'), 
+                                  f"Install version {version}?"):
+                self.perform_update(status_label, version)
+        
+        install_btn = ModernButton(main_frame, text=f"📥 {self.language.get('install_version')}", 
+                                  command=install_selected, width=20, font=self.persian_font_bold)
+        install_btn.pack(pady=10)
+        
+        # Start checking for update
+        update_window.after(500, check_update)
+        update_window.after(1000, load_versions)
+    
+    def perform_update(self, status_label, version=None):
+        """Perform update"""
+        status_label.config(text=f"⏳ {self.language.get('updating')}...")
+        self.root.update()
+        
+        try:
+            if version:
+                result = self.updater.update_to_version(version)
+            else:
+                result = self.updater.update_to_latest()
+            
+            if result['success']:
+                status_label.config(text=f"✅ {self.language.get('update_success')}")
+                messagebox.showinfo(self.language.get('success'), 
+                                   f"{self.language.get('update_success')}\n\n{self.language.get('restart_required')}")
+                self.root.quit()
+            else:
+                status_label.config(text=f"❌ {self.language.get('update_error')}: {', '.join(result['failed'])}")
+                messagebox.showerror(self.language.get('error'), 
+                                    f"{self.language.get('update_error')}\n\nFailed files: {', '.join(result['failed'])}")
+        except Exception as e:
+            status_label.config(text=f"❌ {self.language.get('update_error')}: {str(e)}")
+            messagebox.showerror(self.language.get('error'), str(e))
         
     def toggle_theme(self):
         self.current_theme = 'dark' if self.current_theme == 'light' else 'light'
         self.apply_theme()
+        self.update_ui_language()
         self.save_settings_clicked(show_message=False)
         
     def apply_theme(self):
@@ -384,12 +596,6 @@ class CryptoTradingCalculator:
         self.top_bar.configure(bg=theme['card_bg'])
         self.scrollable_frame.configure(bg=theme['bg'])
         self.main_canvas.configure(bg=theme['bg'])
-        
-        # Update theme button
-        if self.current_theme == 'dark':
-            self.theme_btn.configure(text="☀️ لایت مود")
-        else:
-            self.theme_btn.configure(text="🌙 دارک مود")
         
         # Apply to all widgets recursively
         self._apply_theme_recursive(self.root, theme)
@@ -463,10 +669,10 @@ class CryptoTradingCalculator:
         symbol = self.symbol_combo.get()
         
         if exchange == "دستی (Custom)":
-            messagebox.showinfo("اطلاعات", "برای صرافی دستی، قیمت API در دسترس نیست.")
+            messagebox.showinfo(self.language.get('info'), self.language.get('no_api_price'))
             return
         
-        self.live_price_label.config(text="در حال دریافت...")
+        self.live_price_label.config(text=self.language.get('fetching_price'))
         self.root.update()
         
         def fetch_price():
@@ -477,8 +683,8 @@ class CryptoTradingCalculator:
                 self.entry_price.delete(0, tk.END)
                 self.entry_price.insert(0, str(price))
             else:
-                self.live_price_label.config(text="خطا در دریافت قیمت")
-                messagebox.showerror("خطا", "نتوانستیم قیمت را از API دریافت کنیم.\nلطفا دستی وارد کنید.")
+                self.live_price_label.config(text=self.language.get('price_error'))
+                messagebox.showerror(self.language.get('error'), self.language.get('api_error'))
         
         # Run in thread to prevent UI freeze
         thread = threading.Thread(target=fetch_price)
@@ -496,10 +702,10 @@ class CryptoTradingCalculator:
             self.config.save_config(capital, risk_percent, fee_percent, exchange, order_type, self.current_theme)
             
             if show_message:
-                messagebox.showinfo("موفق", "تنظیمات با موفقیت ذخیره شد!")
+                messagebox.showinfo(self.language.get('success'), self.language.get('save_success'))
         except ValueError:
             if show_message:
-                messagebox.showerror("خطا", "لطفا اعداد معتبر وارد کنید!")
+                messagebox.showerror(self.language.get('error'), self.language.get('enter_valid'))
     
     def calculate(self):
         try:
@@ -523,7 +729,7 @@ class CryptoTradingCalculator:
                     tps.append(float(tp_val))
             
             if not tps:
-                messagebox.showerror("خطا", "لطفا حداقل یک Take Profit وارد کنید!")
+                messagebox.showerror(self.language.get('error'), self.language.get('enter_tp'))
                 return
             
             risk_amount = capital * (risk_percent / 100)
@@ -638,17 +844,17 @@ class CryptoTradingCalculator:
             }
             self.history.add_trade(trade_data)
             
-            messagebox.showinfo("موفق", "محاسبات با موفقیت انجام شد!\n\nمعامله در تاریخچه ذخیره شد.")
+            messagebox.showinfo(self.language.get('success'), self.language.get('calc_success'))
             
         except ValueError:
-            messagebox.showerror("خطا", "لطفا تمام فیلدها را با مقادیر معتبر پر کنید!")
+            messagebox.showerror(self.language.get('error'), self.language.get('enter_valid'))
         except Exception as e:
-            messagebox.showerror("خطا", f"خطایی رخ داد: {str(e)}")
+            messagebox.showerror(self.language.get('error'), f"{self.language.get('error')}: {str(e)}")
     
     def show_settings(self):
         """Show comprehensive settings window"""
         settings_window = tk.Toplevel(self.root)
-        settings_window.title("⚙️ تنظیمات پیشرفته")
+        settings_window.title(f"⚙️ {self.language.get('advanced_settings')}")
         settings_window.geometry("700x600")
         settings_window.resizable(False, False)
         
@@ -675,7 +881,7 @@ class CryptoTradingCalculator:
         scrollbar.pack(side="right", fill="y")
         
         # Title
-        title = tk.Label(scrollable_frame, text="⚙️ تنظیمات پیشرفته", 
+        title = tk.Label(scrollable_frame, text=f"⚙️ {self.language.get('advanced_settings')}", 
                         font=self.persian_font_title, bg=theme['card_bg'], fg=theme['fg'])
         title.pack(pady=(0, 20))
         
@@ -726,12 +932,12 @@ class CryptoTradingCalculator:
             }
         
         # Other settings
-        other_frame = tk.LabelFrame(scrollable_frame, text="🔧 سایر تنظیمات", 
+        other_frame = tk.LabelFrame(scrollable_frame, text=f"🔧 {self.language.get('other_settings')}", 
                                    font=self.persian_font_bold, bg=theme['card_bg'], 
                                    fg=theme['fg'], padx=10, pady=10)
         other_frame.pack(fill=tk.X, pady=10)
         
-        tk.Label(other_frame, text="زمان به‌روزرسانی قیمت (ثانیه):", bg=theme['card_bg'], 
+        tk.Label(other_frame, text=f"{self.language.get('refresh_rate')}:", bg=theme['card_bg'], 
                 fg=theme['fg'], font=self.persian_font).pack(anchor=tk.W, pady=5)
         refresh_rate = tk.Entry(other_frame, width=20, bg=theme['input_bg'], 
                                fg=theme['input_fg'], font=self.persian_font)
@@ -739,7 +945,7 @@ class CryptoTradingCalculator:
         refresh_rate.pack(anchor=tk.W, pady=(0, 10))
         
         # Save button
-        save_btn = ModernButton(scrollable_frame, text="💾 ذخیره تمام تنظیمات", 
+        save_btn = ModernButton(scrollable_frame, text=f"💾 {self.language.get('save_all')}", 
                                command=lambda: self._save_advanced_settings(
                                    settings_window, api_keys, refresh_rate.get()), 
                                width=25, font=self.persian_font_bold)
@@ -767,15 +973,15 @@ class CryptoTradingCalculator:
             with open('config.json', 'w', encoding='utf-8') as f:
                 json.dump(self.config.data, f, indent=4, ensure_ascii=False)
             
-            messagebox.showinfo("موفق", f"تنظیمات ذخیره شد!\n\n🔑 {len(saved_keys)} صرافی API Key ذخیره شد")
+            messagebox.showinfo(self.language.get('success'), f"{len(saved_keys)} {self.language.get('keys_saved')}")
             window.destroy()
         except Exception as e:
-            messagebox.showerror("خطا", f"خطا در ذخیره: {str(e)}")
+            messagebox.showerror(self.language.get('error'), f"{self.language.get('error')}: {str(e)}")
     
     def show_history(self):
         """Show trade history"""
         history_window = tk.Toplevel(self.root)
-        history_window.title("📊 تاریخچه معاملات")
+        history_window.title(f"📊 {self.language.get('trade_history')}")
         history_window.geometry("900x600")
         
         theme = self.themes[self.current_theme]
@@ -789,15 +995,15 @@ class CryptoTradingCalculator:
         header = tk.Frame(main_frame, bg=theme['card_bg'])
         header.pack(fill=tk.X, pady=(0, 10))
         
-        title = tk.Label(header, text="📊 تاریخچه معاملات", 
+        title = tk.Label(header, text=f"📊 {self.language.get('trade_history')}", 
                         font=self.persian_font_header, bg=theme['card_bg'], fg=theme['fg'])
         title.pack(side=tk.LEFT)
         
-        export_btn = ModernButton(header, text="💾 Export", command=self.export_csv, 
+        export_btn = ModernButton(header, text=f"💾 {self.language.get('export')}", command=self.export_csv, 
                                  width=12, font=self.persian_font)
         export_btn.pack(side=tk.RIGHT, padx=5)
         
-        clear_btn = ModernButton(header, text="🗑️ پاک کردن", command=self.clear_history, 
+        clear_btn = ModernButton(header, text=f"🗑️ {self.language.get('clear')}", command=self.clear_history, 
                                 width=12, font=self.persian_font)
         clear_btn.pack(side=tk.RIGHT, padx=5)
         
@@ -815,21 +1021,21 @@ class CryptoTradingCalculator:
         
         trades = self.history.get_trades()
         if not trades:
-            text.insert('1.0', "هیچ معامله‌ای ثبت نشده است.")
+            text.insert('1.0', self.language.get('no_trades'))
         else:
             for i, trade in enumerate(reversed(trades), 1):
                 trade_text = f"""
 {'='*80}
-📊 معامله #{i} - {trade.get('timestamp', 'N/A')}
+📊 {self.language.get('trade_num')} #{i} - {trade.get('timestamp', 'N/A')}
 {'='*80}
-🏦 صرافی: {trade.get('exchange', 'N/A')} | 📈 نوع: {trade.get('position', 'N/A')}
-💱 سمبل: {trade.get('symbol', 'N/A')}
-💰 ورود: {trade.get('entry_price', 0):,.4f} | 🛑 SL: {trade.get('stop_loss', 0):,.4f}
-⚡ لوریج: {trade.get('leverage', 0)}x | 📦 حجم: {trade.get('position_size', 0):,.2f} USDT
-❌ زیان SL: {trade.get('loss_at_sl', 0):,.2f} USDT
+🏦 {self.language.get('exchange')}: {trade.get('exchange', 'N/A')} | 📈 {self.language.get('position_type')}: {trade.get('position', 'N/A')}
+💱 {self.language.get('symbol')}: {trade.get('symbol', 'N/A')}
+💰 {self.language.get('entry_price')}: {trade.get('entry_price', 0):,.4f} | 🛑 {self.language.get('stop_loss')}: {trade.get('stop_loss', 0):,.4f}
+⚡ {self.language.get('leverage')}: {trade.get('leverage', 0)}x | 📦 Size: {trade.get('position_size', 0):,.2f} USDT
+❌ Loss SL: {trade.get('loss_at_sl', 0):,.2f} USDT
 """
                 if 'notes' in trade and trade['notes']:
-                    trade_text += f"📝 یادداشت: {trade['notes']}\n"
+                    trade_text += f"📝 {self.language.get('notes')}: {trade['notes']}\n"
                 trade_text += "\n"
                 text.insert(tk.END, trade_text)
         
@@ -842,7 +1048,7 @@ class CryptoTradingCalculator:
             return
         
         self.chart_window = tk.Toplevel(self.root)
-        self.chart_window.title("📈 نمودارها و تحلیل")
+        self.chart_window.title(f"📈 {self.language.get('charts_analysis')}")
         self.chart_window.geometry("1000x700")
         
         theme = self.themes[self.current_theme]
@@ -854,7 +1060,7 @@ class CryptoTradingCalculator:
         
         # Tab 1: P&L Chart
         pnl_frame = tk.Frame(notebook, bg=theme['card_bg'])
-        notebook.add(pnl_frame, text="📊 نمودار سود/زیان")
+        notebook.add(pnl_frame, text=f"📊 {self.language.get('pnl_chart')}")
         
         # Get current trade data
         try:
@@ -870,12 +1076,12 @@ class CryptoTradingCalculator:
             canvas.draw()
             canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         except:
-            tk.Label(pnl_frame, text="⚠️ لطفا ابتدا اطلاعات معامله را وارد کنید", 
+            tk.Label(pnl_frame, text=f"⚠️ {self.language.get('enter_trade_first')}", 
                     font=self.persian_font_header, bg=theme['card_bg'], fg=theme['fg']).pack(expand=True)
         
         # Tab 2: History Chart
         history_frame = tk.Frame(notebook, bg=theme['card_bg'])
-        notebook.add(history_frame, text="📈 تحلیل تاریخچه")
+        notebook.add(history_frame, text=f"📈 {self.language.get('history_analysis')}")
         
         trades = self.history.get_trades()
         if trades and len(trades) > 0:
@@ -886,15 +1092,15 @@ class CryptoTradingCalculator:
                     canvas.draw()
                     canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
             except:
-                tk.Label(history_frame, text="⚠️ خطا در نمایش نمودار تاریخچه", 
+                tk.Label(history_frame, text=f"⚠️ {self.language.get('chart_error')}", 
                         font=self.persian_font_header, bg=theme['card_bg'], fg=theme['fg']).pack(expand=True)
         else:
-            tk.Label(history_frame, text="⚠️ تاریخچه معاملاتی وجود ندارد", 
+            tk.Label(history_frame, text=f"⚠️ {self.language.get('no_history')}", 
                     font=self.persian_font_header, bg=theme['card_bg'], fg=theme['fg']).pack(expand=True)
     
     def export_csv(self):
         if not self.history.trades:
-            messagebox.showinfo("اطلاعات", "هیچ معامله‌ای برای Export وجود ندارد!")
+            messagebox.showinfo(self.language.get('info'), self.language.get('no_export_data'))
             return
         
         filename = filedialog.asksaveasfilename(
@@ -905,14 +1111,14 @@ class CryptoTradingCalculator:
         
         if filename:
             if self.history.export_to_csv(filename):
-                messagebox.showinfo("موفق", f"فایل با موفقیت ذخیره شد:\n{filename}")
+                messagebox.showinfo(self.language.get('success'), f"{self.language.get('file_saved')}:\n{filename}")
             else:
-                messagebox.showerror("خطا", "خطا در ذخیره فایل!")
+                messagebox.showerror(self.language.get('error'), self.language.get('save_error'))
     
     def clear_history(self):
-        if messagebox.askyesno("تأیید", "آیا مطمئن هستید که می‌خواهید تاریخچه را پاک کنید؟"):
+        if messagebox.askyesno(self.language.get('confirm'), self.language.get('clear_history_confirm')):
             self.history.clear_history()
-            messagebox.showinfo("موفق", "تاریخچه با موفقیت پاک شد!")
+            messagebox.showinfo(self.language.get('success'), self.language.get('history_cleared'))
     
     def clear_results(self):
         self.results_text.delete('1.0', tk.END)

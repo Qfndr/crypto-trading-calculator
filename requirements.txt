@@ -1,3 +1,12 @@
-# No external dependencies required
-# The application uses only Python standard library (tkinter)
-# Tkinter is included with Python on Windows by default
+# Required packages for Crypto Trading Calculator
+
+# For API connections to exchanges
+requests>=2.31.0
+
+# For charts and graphs
+matplotlib>=3.7.0
+
+# For data manipulation
+pandas>=2.0.0
+
+# Note: tkinter comes pre-installed with Python

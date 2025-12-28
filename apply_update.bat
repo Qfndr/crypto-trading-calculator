@@ -1,6 +1,15 @@
 @echo off
-taskkill /F /IM python.exe >nul 2>&1
+cd /d "%~dp0"
+
 timeout /t 2 /nobreak >nul
-copy /Y main_update.py main.py
-del main_update.py
-start "" "python" "main.py"
+
+if not exist "%~dp0main_update.py" (
+  echo Could Not Find "%~dp0main_update.py"
+  pause
+  exit /b 1
+)
+
+copy /Y "%~dp0main_update.py" "%~dp0main.py" >nul
+del "%~dp0main_update.py" >nul
+
+start "" /D "%~dp0" "%~dp0main.py"

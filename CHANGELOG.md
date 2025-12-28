@@ -1,13 +1,7 @@
-# Changelog
-
-## [1.6.4] - 2025-12-28
+## [1.6.6] - 2025-12-28
 
 ### Fixed
-- Restored Settings (General + API Keys) and restored language config UI.
-- Fixed dark theme consistency in sub-windows (no white messagebox placeholders).
-- Fixed update workflow: staged update + apply script for Windows.
-- History/Charts restored.
-
----
-## [1.6.3] - 2025-12-28
-- PermissionError fix by moving data to user directory.
+- Fixed app not starting (single Tk root + proper mainloop).
+- Fixed updater running from System32 by enforcing script directory in apply_update.bat (cd /d %~dp0).
+- Expanded language list to include fa,en,tr,ru,ar,hi,zh,ja,fr,it,bg (non-fa fall back to English strings).
+- Added basic error logging to %USERPROFILE%\.crypto_calculator\app.log.

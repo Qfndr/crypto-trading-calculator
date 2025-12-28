@@ -1,216 +1,289 @@
 """
 Complete Multi-language System for Crypto Trading Calculator
-Supports: Persian (fa), English (en)
-All UI elements are translated
+Supports: Persian, English, Turkish, Russian, Arabic, Hindi, Chinese, Japanese, French, Italian, Bulgarian
 """
 
 class Language:
     def __init__(self):
         self.current = 'fa'
+        
+        # Common keys ensuring consistency across all languages
         self.translations = {
-            'fa': {
-                # App Info
+            'fa': { # Persian
                 'app_title': 'ماشین حساب ترید کریپتو',
                 'version': 'نسخه',
-                
-                # Top Bar Buttons
-                'light_mode': 'لایت مود',
-                'dark_mode': 'دارک مود',
-                'settings': 'تنظیمات',
-                'history': 'تاریخچه',
-                'charts': 'نمودارها',
-                'update': 'آپدیت',
-                
-                # Card Titles
-                'exchange_symbol': 'انتخاب صرافی و سمبل',
-                'capital_risk': 'تنظیمات سرمایه و ریسک',
-                'trade_info': 'اطلاعات معامله',
-                'results': 'نتایج محاسبات',
-                
-                # Exchange Card Labels
-                'exchange': 'صرافی',
-                'order_type': 'نوع سفارش',
-                'symbol': 'سمبل',
-                'live_price': 'قیمت لحظه‌ای',
-                'fetching_price': 'در حال دریافت...',
-                'price_error': 'خطا در دریافت قیمت',
-                
-                # Capital Card Labels
-                'total_capital': 'سرمایه کل (USDT)',
-                'risk_percent': 'درصد ریسک (%)',
-                'fee_percent': 'کارمزد (%)',
-                'save_settings': 'ذخیره تنظیمات',
-                
-                # Trade Card Labels
-                'entry_price': 'قیمت ورود',
-                'stop_loss': 'استاپ لاس (SL)',
-                'take_profit': 'تیک پرافیت',
-                'position_type': 'نوع معامله',
-                'leverage': 'لوریج',
-                'notes': 'یادداشت',
-                'calculate': 'محاسبه',
-                
-                # Results Card
-                'export_csv': 'Export CSV',
-                'clear_results': 'پاک کردن نتایج',
-                
-                # Update Manager
-                'update_manager': 'مدیریت آپدیت',
-                'current_version': 'نسخه فعلی',
-                'latest_version': 'آخرین نسخه',
-                'checking_update': 'در حال بررسی آپدیت',
-                'update_available': 'آپدیت جدید موجود است!',
-                'up_to_date': 'برنامه به‌روز است',
-                'update_now': 'آپدیت کن',
-                'select_version': 'انتخاب نسخه دلخواه',
-                'install_version': 'نصب نسخه انتخابی',
-                'updating': 'در حال آپدیت',
-                'update_success': 'آپدیت با موفقیت انجام شد',
-                'update_error': 'خطا در آپدیت',
-                'restart_required': 'لطفاً برنامه را مجدداً اجرا کنید',
-                
-                # Settings
-                'advanced_settings': 'تنظیمات پیشرفته',
-                'api_settings': 'تنظیمات API',
-                'other_settings': 'سایر تنظیمات',
-                'refresh_rate': 'نرخ به‌روزرسانی (ثانیه)',
-                'save_all': 'ذخیره همه',
-                'keys_saved': 'کلید ذخیره شد',
-                
-                # History
-                'trade_history': 'تاریخچه معاملات',
-                'trade_num': 'معامله',
-                'no_trades': 'هیچ معامله‌ای ثبت نشده است',
-                'export': 'خروجی',
-                'clear': 'پاک کردن',
-                'clear_history_confirm': 'آیا مطمئن هستید که می‌خواهید تاریخچه را پاک کنید؟',
-                'history_cleared': 'تاریخچه پاک شد',
-                
-                # Charts
-                'charts_analysis': 'نمودارها و تحلیل',
-                'pnl_chart': 'نمودار سود/زیان',
-                'history_analysis': 'تحلیل تاریخچه',
-                'enter_trade_first': 'ابتدا اطلاعات معامله را وارد کنید',
-                'chart_error': 'خطا در ایجاد نمودار',
-                'no_history': 'تاریخچه‌ای موجود نیست',
-                
-                # Messages
-                'success': 'موفق',
-                'error': 'خطا',
-                'info': 'اطلاعات',
-                'confirm': 'تأیید',
-                'warning': 'هشدار',
-                'save_success': 'تنظیمات با موفقیت ذخیره شد',
-                'calc_success': 'محاسبات انجام شد',
-                'enter_valid': 'لطفاً مقادیر معتبر وارد کنید',
-                'enter_tp': 'لطفاً حداقل یک تیک پرافیت وارد کنید',
-                'no_api_price': 'برای صرافی دستی، قیمت API در دسترس نیست',
-                'api_error': 'خطا در اتصال به API صرافی',
-                'no_export_data': 'داده‌ای برای خروجی وجود ندارد',
-                'file_saved': 'فایل ذخیره شد',
-                'save_error': 'خطا در ذخیره فایل',
+                'light_mode': 'لایت مود', 'dark_mode': 'دارک مود',
+                'settings': 'تنظیمات', 'history': 'تاریخچه', 'charts': 'نمودارها', 'update': 'آپدیت',
+                'exchange_symbol': 'انتخاب صرافی و سمبل', 'capital_risk': 'تنظیمات سرمایه و ریسک',
+                'trade_info': 'اطلاعات معامله', 'results': 'نتایج محاسبات',
+                'exchange': 'صرافی', 'order_type': 'نوع سفارش', 'symbol': 'سمبل',
+                'live_price': 'قیمت لحظه‌ای', 'fetching_price': 'در حال دریافت...', 'price_error': 'خطا',
+                'total_capital': 'سرمایه کل (USDT)', 'risk_percent': 'درصد ریسک (%)',
+                'fee_percent': 'کارمزد (%)', 'save_settings': 'ذخیره تنظیمات',
+                'entry_price': 'قیمت ورود', 'stop_loss': 'استاپ لاس (SL)', 'take_profit': 'تیک پرافیت',
+                'position_type': 'نوع معامله', 'leverage': 'لوریج', 'notes': 'یادداشت', 'calculate': 'محاسبه',
+                'export_csv': 'خروجی CSV', 'clear_results': 'پاک کردن',
+                'update_manager': 'مدیریت آپدیت', 'current_version': 'نسخه فعلی', 'latest_version': 'آخرین نسخه',
+                'checking_update': 'بررسی آپدیت', 'update_available': 'آپدیت موجود است', 'up_to_date': 'برنامه به‌روز است',
+                'update_now': 'آپدیت کن', 'select_version': 'انتخاب نسخه', 'install_version': 'نصب',
+                'updating': 'در حال آپدیت...', 'update_success': 'موفق', 'update_error': 'خطا',
+                'advanced_settings': 'تنظیمات پیشرفته', 'api_settings': 'تنظیمات API', 'refresh_rate': 'نرخ رفرش (ثانیه)',
+                'save_all': 'ذخیره همه', 'keys_saved': 'ذخیره شد',
+                'trade_history': 'تاریخچه معاملات', 'no_trades': 'معامله‌ای نیست', 'clear_history_confirm': 'مطمئنی؟',
+                'charts_analysis': 'تحلیل نمودار', 'pnl_chart': 'نمودار سود/زیان', 'enter_trade_first': 'اول محاسبه کن',
+                'success': 'موفق', 'error': 'خطا', 'info': 'اطلاعات', 'confirm': 'تأیید',
+                'save_success': 'ذخیره شد', 'calc_success': 'انجام شد', 'enter_valid': 'مقادیر نامعتبر',
+                'enter_tp': 'حداقل یک TP وارد کن', 'restart_required': 'برنامه را ریستارت کنید'
             },
-            'en': {
-                # App Info
-                'app_title': 'Crypto Trading Calculator',
-                'version': 'Version',
-                
-                # Top Bar Buttons
-                'light_mode': 'Light Mode',
-                'dark_mode': 'Dark Mode',
-                'settings': 'Settings',
-                'history': 'History',
-                'charts': 'Charts',
-                'update': 'Update',
-                
-                # Card Titles
-                'exchange_symbol': 'Exchange & Symbol Selection',
-                'capital_risk': 'Capital & Risk Settings',
-                'trade_info': 'Trade Information',
-                'results': 'Calculation Results',
-                
-                # Exchange Card Labels
-                'exchange': 'Exchange',
-                'order_type': 'Order Type',
-                'symbol': 'Symbol',
-                'live_price': 'Live Price',
-                'fetching_price': 'Fetching...',
-                'price_error': 'Price Error',
-                
-                # Capital Card Labels
-                'total_capital': 'Total Capital (USDT)',
-                'risk_percent': 'Risk Percent (%)',
-                'fee_percent': 'Fee Percent (%)',
-                'save_settings': 'Save Settings',
-                
-                # Trade Card Labels
-                'entry_price': 'Entry Price',
-                'stop_loss': 'Stop Loss (SL)',
-                'take_profit': 'Take Profit',
-                'position_type': 'Position Type',
-                'leverage': 'Leverage',
-                'notes': 'Notes',
-                'calculate': 'Calculate',
-                
-                # Results Card
-                'export_csv': 'Export CSV',
-                'clear_results': 'Clear Results',
-                
-                # Update Manager
-                'update_manager': 'Update Manager',
-                'current_version': 'Current Version',
-                'latest_version': 'Latest Version',
-                'checking_update': 'Checking for updates',
-                'update_available': 'New update available!',
-                'up_to_date': 'You are up to date',
-                'update_now': 'Update Now',
-                'select_version': 'Select Version',
-                'install_version': 'Install Selected Version',
-                'updating': 'Updating',
-                'update_success': 'Update completed successfully',
-                'update_error': 'Update error',
-                'restart_required': 'Please restart the application',
-                
-                # Settings
-                'advanced_settings': 'Advanced Settings',
-                'api_settings': 'API Settings',
-                'other_settings': 'Other Settings',
-                'refresh_rate': 'Refresh Rate (seconds)',
-                'save_all': 'Save All',
-                'keys_saved': 'keys saved',
-                
-                # History
-                'trade_history': 'Trade History',
-                'trade_num': 'Trade',
-                'no_trades': 'No trades recorded yet',
-                'export': 'Export',
-                'clear': 'Clear',
-                'clear_history_confirm': 'Are you sure you want to clear history?',
-                'history_cleared': 'History cleared',
-                
-                # Charts
-                'charts_analysis': 'Charts & Analysis',
-                'pnl_chart': 'P&L Chart',
-                'history_analysis': 'History Analysis',
-                'enter_trade_first': 'Please enter trade information first',
-                'chart_error': 'Error creating chart',
-                'no_history': 'No history available',
-                
-                # Messages
-                'success': 'Success',
-                'error': 'Error',
-                'info': 'Information',
-                'confirm': 'Confirm',
-                'warning': 'Warning',
-                'save_success': 'Settings saved successfully',
-                'calc_success': 'Calculation completed',
-                'enter_valid': 'Please enter valid values',
-                'enter_tp': 'Please enter at least one take profit',
-                'no_api_price': 'API price not available for manual exchange',
-                'api_error': 'Error connecting to exchange API',
-                'no_export_data': 'No data to export',
-                'file_saved': 'File saved',
-                'save_error': 'Error saving file',
+            'en': { # English
+                'app_title': 'Crypto Trading Calculator', 'version': 'Version',
+                'light_mode': 'Light Mode', 'dark_mode': 'Dark Mode',
+                'settings': 'Settings', 'history': 'History', 'charts': 'Charts', 'update': 'Update',
+                'exchange_symbol': 'Exchange & Symbol', 'capital_risk': 'Capital & Risk',
+                'trade_info': 'Trade Information', 'results': 'Calculation Results',
+                'exchange': 'Exchange', 'order_type': 'Order Type', 'symbol': 'Symbol',
+                'live_price': 'Live Price', 'fetching_price': 'Fetching...', 'price_error': 'Error',
+                'total_capital': 'Total Capital (USDT)', 'risk_percent': 'Risk (%)',
+                'fee_percent': 'Fee (%)', 'save_settings': 'Save Settings',
+                'entry_price': 'Entry Price', 'stop_loss': 'Stop Loss', 'take_profit': 'Take Profit',
+                'position_type': 'Position', 'leverage': 'Leverage', 'notes': 'Notes', 'calculate': 'Calculate',
+                'export_csv': 'Export CSV', 'clear_results': 'Clear',
+                'update_manager': 'Update Manager', 'current_version': 'Current v', 'latest_version': 'Latest v',
+                'checking_update': 'Checking...', 'update_available': 'Update Available', 'up_to_date': 'Up to date',
+                'update_now': 'Update Now', 'select_version': 'Select Version', 'install_version': 'Install',
+                'updating': 'Updating...', 'update_success': 'Success', 'update_error': 'Error',
+                'advanced_settings': 'Advanced Settings', 'api_settings': 'API Settings', 'refresh_rate': 'Refresh Rate (s)',
+                'save_all': 'Save All', 'keys_saved': 'Saved',
+                'trade_history': 'Trade History', 'no_trades': 'No trades', 'clear_history_confirm': 'Are you sure?',
+                'charts_analysis': 'Charts Analysis', 'pnl_chart': 'P&L Chart', 'enter_trade_first': 'Calculate first',
+                'success': 'Success', 'error': 'Error', 'info': 'Info', 'confirm': 'Confirm',
+                'save_success': 'Saved successfully', 'calc_success': 'Done', 'enter_valid': 'Invalid values',
+                'enter_tp': 'Enter at least 1 TP', 'restart_required': 'Please restart app'
+            },
+            'tr': { # Turkish
+                'app_title': 'Kripto Ticaret Hesaplayıcı', 'version': 'Sürüm',
+                'light_mode': 'Aydınlık Mod', 'dark_mode': 'Karanlık Mod',
+                'settings': 'Ayarlar', 'history': 'Geçmiş', 'charts': 'Grafikler', 'update': 'Güncelle',
+                'exchange_symbol': 'Borsa ve Sembol', 'capital_risk': 'Sermaye ve Risk',
+                'trade_info': 'Ticaret Bilgisi', 'results': 'Sonuçlar',
+                'exchange': 'Borsa', 'order_type': 'Emir Tipi', 'symbol': 'Sembol',
+                'live_price': 'Canlı Fiyat', 'fetching_price': 'Getiriliyor...', 'price_error': 'Hata',
+                'total_capital': 'Toplam Sermaye', 'risk_percent': 'Risk (%)',
+                'fee_percent': 'Komisyon (%)', 'save_settings': 'Kaydet',
+                'entry_price': 'Giriş Fiyatı', 'stop_loss': 'Zarar Durdur', 'take_profit': 'Kar Al',
+                'position_type': 'Pozisyon', 'leverage': 'Kaldıraç', 'notes': 'Notlar', 'calculate': 'Hesapla',
+                'export_csv': 'CSV İndir', 'clear_results': 'Temizle',
+                'update_manager': 'Güncelleme Yöneticisi', 'current_version': 'Mevcut', 'latest_version': 'Son',
+                'checking_update': 'Kontrol ediliyor...', 'update_available': 'Güncelleme Var', 'up_to_date': 'Güncel',
+                'update_now': 'Güncelle', 'select_version': 'Sürüm Seç', 'install_version': 'Yükle',
+                'updating': 'Güncelleniyor...', 'update_success': 'Başarılı', 'update_error': 'Hata',
+                'advanced_settings': 'Gelişmiş Ayarlar', 'api_settings': 'API Ayarları', 'refresh_rate': 'Yenileme (sn)',
+                'save_all': 'Tümünü Kaydet', 'keys_saved': 'Kaydedildi',
+                'trade_history': 'Ticaret Geçmişi', 'no_trades': 'İşlem yok', 'clear_history_confirm': 'Emin misiniz?',
+                'charts_analysis': 'Grafik Analizi', 'pnl_chart': 'K/Z Grafiği', 'enter_trade_first': 'Önce hesapla',
+                'success': 'Başarılı', 'error': 'Hata', 'info': 'Bilgi', 'confirm': 'Onayla',
+                'save_success': 'Başarıyla kaydedildi', 'calc_success': 'Tamamlandı', 'enter_valid': 'Geçersiz değerler',
+                'enter_tp': 'En az 1 TP girin', 'restart_required': 'Uygulamayı yeniden başlatın'
+            },
+            'ru': { # Russian
+                'app_title': 'Калькулятор Крипто Трейдинга', 'version': 'Версия',
+                'light_mode': 'Светлая', 'dark_mode': 'Темная',
+                'settings': 'Настройки', 'history': 'История', 'charts': 'Графики', 'update': 'Обновить',
+                'exchange_symbol': 'Биржа и Символ', 'capital_risk': 'Капитал и Риск',
+                'trade_info': 'Информация о сделке', 'results': 'Результаты',
+                'exchange': 'Биржа', 'order_type': 'Тип ордера', 'symbol': 'Символ',
+                'live_price': 'Цена', 'fetching_price': 'Загрузка...', 'price_error': 'Ошибка',
+                'total_capital': 'Капитал (USDT)', 'risk_percent': 'Риск (%)',
+                'fee_percent': 'Комиссия (%)', 'save_settings': 'Сохранить',
+                'entry_price': 'Вход', 'stop_loss': 'Стоп-лосс', 'take_profit': 'Тейк-профит',
+                'position_type': 'Позиция', 'leverage': 'Плечо', 'notes': 'Заметки', 'calculate': 'Рассчитать',
+                'export_csv': 'Экспорт CSV', 'clear_results': 'Очистить',
+                'update_manager': 'Менеджер обновлений', 'current_version': 'Текущая', 'latest_version': 'Последняя',
+                'checking_update': 'Проверка...', 'update_available': 'Доступно обновление', 'up_to_date': 'Обновлено',
+                'update_now': 'Обновить', 'select_version': 'Выбрать версию', 'install_version': 'Установить',
+                'updating': 'Обновление...', 'update_success': 'Успешно', 'update_error': 'Ошибка',
+                'advanced_settings': 'Доп. настройки', 'api_settings': 'Настройки API', 'refresh_rate': 'Обновление (сек)',
+                'save_all': 'Сохранить все', 'keys_saved': 'Сохранено',
+                'trade_history': 'История сделок', 'no_trades': 'Нет сделок', 'clear_history_confirm': 'Вы уверены?',
+                'charts_analysis': 'Анализ графиков', 'pnl_chart': 'График P&L', 'enter_trade_first': 'Сначала рассчитайте',
+                'success': 'Успешно', 'error': 'Ошибка', 'info': 'Инфо', 'confirm': 'Подтвердить',
+                'save_success': 'Успешно сохранено', 'calc_success': 'Готово', 'enter_valid': 'Неверные значения',
+                'enter_tp': 'Введите хотя бы 1 TP', 'restart_required': 'Перезапустите приложение'
+            },
+            'ar': { # Arabic
+                'app_title': 'حاسبة تداول العملات الرقمية', 'version': 'الإصدار',
+                'light_mode': 'الوضع الفاتح', 'dark_mode': 'الوضع الداكن',
+                'settings': 'الإعدادات', 'history': 'السجل', 'charts': 'الرسوم البيانية', 'update': 'تحديث',
+                'exchange_symbol': 'المنصة والعملة', 'capital_risk': 'رأس المال والمخاطرة',
+                'trade_info': 'معلومات الصفقة', 'results': 'النتائج',
+                'exchange': 'المنصة', 'order_type': 'نوع الطلب', 'symbol': 'الرمز',
+                'live_price': 'السعر المباشر', 'fetching_price': 'جاري الجلب...', 'price_error': 'خطأ',
+                'total_capital': 'رأس المال', 'risk_percent': 'المخاطرة (%)',
+                'fee_percent': 'الرسوم (%)', 'save_settings': 'حفظ',
+                'entry_price': 'سعر الدخول', 'stop_loss': 'وقف الخسارة', 'take_profit': 'جني الأرباح',
+                'position_type': 'نوع المركز', 'leverage': 'الرافعة', 'notes': 'ملاحظات', 'calculate': 'حساب',
+                'export_csv': 'تصدير CSV', 'clear_results': 'مسح',
+                'update_manager': 'مدير التحديثات', 'current_version': 'الحالية', 'latest_version': 'الأخيرة',
+                'checking_update': 'فحص...', 'update_available': 'تحديث متاح', 'up_to_date': 'محدث',
+                'update_now': 'تحديث الآن', 'select_version': 'اختر الإصدار', 'install_version': 'تثبيت',
+                'updating': 'جاري التحديث...', 'update_success': 'تم بنجاح', 'update_error': 'خطأ',
+                'advanced_settings': 'إعدادات متقدمة', 'api_settings': 'إعدادات API', 'refresh_rate': 'معدل التحديث (ث)',
+                'save_all': 'حفظ الكل', 'keys_saved': 'تم الحفظ',
+                'trade_history': 'سجل الصفقات', 'no_trades': 'لا توجد صفقات', 'clear_history_confirm': 'هل أنت متأكد؟',
+                'charts_analysis': 'تحليل الرسوم', 'pnl_chart': 'مخطط الربح/الخسارة', 'enter_trade_first': 'احسب أولاً',
+                'success': 'ناجح', 'error': 'خطأ', 'info': 'معلومات', 'confirm': 'تأكيد',
+                'save_success': 'تم الحفظ بنجاح', 'calc_success': 'تم', 'enter_valid': 'قيم غير صالحة',
+                'enter_tp': 'أدخل TP واحد على الأقل', 'restart_required': 'أعد تشغيل التطبيق'
+            },
+            'hi': { # Hindi
+                'app_title': 'क्रिप्टो ट्रेडिंग कैलकुलेटर', 'version': 'संस्करण',
+                'light_mode': 'लाइट मोड', 'dark_mode': 'डार्क मोड',
+                'settings': 'सेटिंग्स', 'history': 'इतिहास', 'charts': 'चार्ट', 'update': 'अपडेट',
+                'exchange_symbol': 'एक्सचेंज और प्रतीक', 'capital_risk': 'पूंजी और जोखिम',
+                'trade_info': 'व्यापार जानकारी', 'results': 'परिणाम',
+                'exchange': 'एक्सचेंज', 'order_type': 'ऑर्डर प्रकार', 'symbol': 'प्रतीक',
+                'live_price': 'लाइव मूल्य', 'fetching_price': 'ला रहा है...', 'price_error': 'त्रुटि',
+                'total_capital': 'कुल पूंजी', 'risk_percent': 'जोखिम (%)',
+                'fee_percent': 'शुल्क (%)', 'save_settings': 'सहेजें',
+                'entry_price': 'प्रवेश मूल्य', 'stop_loss': 'स्टॉप लॉस', 'take_profit': 'लाभ लें',
+                'position_type': 'स्थिति', 'leverage': 'लीवरेज', 'notes': 'नोट्स', 'calculate': 'गणना करें',
+                'export_csv': 'CSV निर्यात', 'clear_results': 'साफ़ करें',
+                'update_manager': 'अपडेट प्रबंधक', 'current_version': 'वर्तमान', 'latest_version': 'नवीनतम',
+                'checking_update': 'जाँच हो रही है...', 'update_available': 'अपडेट उपलब्ध', 'up_to_date': 'अद्यतित',
+                'update_now': 'अभी अपडेट करें', 'select_version': 'संस्करण चुनें', 'install_version': 'इंस्टॉल करें',
+                'updating': 'अपडेट हो रहा है...', 'update_success': 'सफल', 'update_error': 'त्रुटि',
+                'advanced_settings': 'उन्नत सेटिंग्स', 'api_settings': 'API सेटिंग्स', 'refresh_rate': 'ताज़ा दर (से)',
+                'save_all': 'सभी सहेजें', 'keys_saved': 'सहेजा गया',
+                'trade_history': 'व्यापार इतिहास', 'no_trades': 'कोई व्यापार नहीं', 'clear_history_confirm': 'क्या आप सुनिश्चित हैं?',
+                'charts_analysis': 'चार्ट विश्लेषण', 'pnl_chart': 'P&L चार्ट', 'enter_trade_first': 'पहले गणना करें',
+                'success': 'सफलता', 'error': 'त्रुटि', 'info': 'जानकारी', 'confirm': 'पुष्टि करें',
+                'save_success': 'सफलतापूर्वक सहेजा गया', 'calc_success': 'हो गया', 'enter_valid': 'अमान्य मान',
+                'enter_tp': 'कम से कम 1 TP दर्ज करें', 'restart_required': 'कृपया ऐप रीस्टार्ट करें'
+            },
+            'zh': { # Chinese
+                'app_title': '加密货币交易计算器', 'version': '版本',
+                'light_mode': '日间模式', 'dark_mode': '夜间模式',
+                'settings': '设置', 'history': '历史', 'charts': '图表', 'update': '更新',
+                'exchange_symbol': '交易所和代码', 'capital_risk': '资金与风险',
+                'trade_info': '交易信息', 'results': '计算结果',
+                'exchange': '交易所', 'order_type': '订单类型', 'symbol': '代码',
+                'live_price': '实时价格', 'fetching_price': '获取中...', 'price_error': '错误',
+                'total_capital': '总资金', 'risk_percent': '风险 (%)',
+                'fee_percent': '费率 (%)', 'save_settings': '保存设置',
+                'entry_price': '入场价', 'stop_loss': '止损', 'take_profit': '止盈',
+                'position_type': '仓位方向', 'leverage': '杠杆', 'notes': '备注', 'calculate': '计算',
+                'export_csv': '导出 CSV', 'clear_results': '清除',
+                'update_manager': '更新管理', 'current_version': '当前版本', 'latest_version': '最新版本',
+                'checking_update': '检查更新...', 'update_available': '有新更新', 'up_to_date': '已是最新',
+                'update_now': '立即更新', 'select_version': '选择版本', 'install_version': '安装',
+                'updating': '更新中...', 'update_success': '成功', 'update_error': '错误',
+                'advanced_settings': '高级设置', 'api_settings': 'API 设置', 'refresh_rate': '刷新率 (秒)',
+                'save_all': '保存全部', 'keys_saved': '已保存',
+                'trade_history': '交易历史', 'no_trades': '无交易记录', 'clear_history_confirm': '确定清除吗？',
+                'charts_analysis': '图表分析', 'pnl_chart': '盈亏图表', 'enter_trade_first': '请先计算',
+                'success': '成功', 'error': '错误', 'info': '信息', 'confirm': '确认',
+                'save_success': '保存成功', 'calc_success': '完成', 'enter_valid': '无效数值',
+                'enter_tp': '至少输入一个止盈', 'restart_required': '请重启应用'
+            },
+            'ja': { # Japanese
+                'app_title': '仮想通貨取引計算機', 'version': 'バージョン',
+                'light_mode': 'ライトモード', 'dark_mode': 'ダークモード',
+                'settings': '設定', 'history': '履歴', 'charts': 'チャート', 'update': '更新',
+                'exchange_symbol': '取引所とシンボル', 'capital_risk': '資金とリスク',
+                'trade_info': '取引情報', 'results': '計算結果',
+                'exchange': '取引所', 'order_type': '注文タイプ', 'symbol': 'シンボル',
+                'live_price': '現在価格', 'fetching_price': '取得中...', 'price_error': 'エラー',
+                'total_capital': '総資金', 'risk_percent': 'リスク (%)',
+                'fee_percent': '手数料 (%)', 'save_settings': '保存',
+                'entry_price': '参入価格', 'stop_loss': '損切り', 'take_profit': '利確',
+                'position_type': 'ポジション', 'leverage': 'レバレッジ', 'notes': 'メモ', 'calculate': '計算',
+                'export_csv': 'CSV出力', 'clear_results': 'クリア',
+                'update_manager': '更新マネージャー', 'current_version': '現在', 'latest_version': '最新',
+                'checking_update': '確認中...', 'update_available': '更新あり', 'up_to_date': '最新です',
+                'update_now': '今すぐ更新', 'select_version': 'バージョン選択', 'install_version': 'インストール',
+                'updating': '更新中...', 'update_success': '成功', 'update_error': 'エラー',
+                'advanced_settings': '詳細設定', 'api_settings': 'API設定', 'refresh_rate': '更新頻度 (秒)',
+                'save_all': '全て保存', 'keys_saved': '保存しました',
+                'trade_history': '取引履歴', 'no_trades': '取引なし', 'clear_history_confirm': '本当によろしいですか？',
+                'charts_analysis': 'チャート分析', 'pnl_chart': '損益チャート', 'enter_trade_first': '先に計算してください',
+                'success': '成功', 'error': 'エラー', 'info': '情報', 'confirm': '確認',
+                'save_success': '保存成功', 'calc_success': '完了', 'enter_valid': '無効な値',
+                'enter_tp': 'TPを1つ以上入力', 'restart_required': 'アプリを再起動してください'
+            },
+            'fr': { # French
+                'app_title': 'Calculateur Trading Crypto', 'version': 'Version',
+                'light_mode': 'Mode Clair', 'dark_mode': 'Mode Sombre',
+                'settings': 'Paramètres', 'history': 'Historique', 'charts': 'Graphiques', 'update': 'Mise à jour',
+                'exchange_symbol': 'Échange et Symbole', 'capital_risk': 'Capital et Risque',
+                'trade_info': 'Infos du Trade', 'results': 'Résultats',
+                'exchange': 'Échange', 'order_type': 'Type d\'ordre', 'symbol': 'Symbole',
+                'live_price': 'Prix en direct', 'fetching_price': 'Chargement...', 'price_error': 'Erreur',
+                'total_capital': 'Capital Total', 'risk_percent': 'Risque (%)',
+                'fee_percent': 'Frais (%)', 'save_settings': 'Sauvegarder',
+                'entry_price': 'Prix d\'entrée', 'stop_loss': 'Stop Loss', 'take_profit': 'Take Profit',
+                'position_type': 'Position', 'leverage': 'Levier', 'notes': 'Notes', 'calculate': 'Calculer',
+                'export_csv': 'Exporter CSV', 'clear_results': 'Effacer',
+                'update_manager': 'Gestionnaire MAJ', 'current_version': 'Actuelle', 'latest_version': 'Dernière',
+                'checking_update': 'Vérification...', 'update_available': 'MAJ Disponible', 'up_to_date': 'À jour',
+                'update_now': 'Mettre à jour', 'select_version': 'Choisir Version', 'install_version': 'Installer',
+                'updating': 'Mise à jour...', 'update_success': 'Succès', 'update_error': 'Erreur',
+                'advanced_settings': 'Paramètres Avancés', 'api_settings': 'Paramètres API', 'refresh_rate': 'Rafraîchissement (s)',
+                'save_all': 'Tout Sauver', 'keys_saved': 'Sauvegardé',
+                'trade_history': 'Historique', 'no_trades': 'Aucun trade', 'clear_history_confirm': 'Êtes-vous sûr ?',
+                'charts_analysis': 'Analyse', 'pnl_chart': 'Graphique P&L', 'enter_trade_first': 'Calculez d\'abord',
+                'success': 'Succès', 'error': 'Erreur', 'info': 'Info', 'confirm': 'Confirmer',
+                'save_success': 'Sauvegarde réussie', 'calc_success': 'Terminé', 'enter_valid': 'Valeurs invalides',
+                'enter_tp': 'Entrez au moins 1 TP', 'restart_required': 'Redémarrez l\'app'
+            },
+            'it': { # Italian
+                'app_title': 'Calcolatrice Trading Crypto', 'version': 'Versione',
+                'light_mode': 'Modo Chiaro', 'dark_mode': 'Modo Scuro',
+                'settings': 'Impostazioni', 'history': 'Cronologia', 'charts': 'Grafici', 'update': 'Aggiorna',
+                'exchange_symbol': 'Scambio e Simbolo', 'capital_risk': 'Capitale e Rischio',
+                'trade_info': 'Info Trade', 'results': 'Risultati',
+                'exchange': 'Scambio', 'order_type': 'Tipo Ordine', 'symbol': 'Simbolo',
+                'live_price': 'Prezzo Live', 'fetching_price': 'Caricamento...', 'price_error': 'Errore',
+                'total_capital': 'Capitale Totale', 'risk_percent': 'Rischio (%)',
+                'fee_percent': 'Tasse (%)', 'save_settings': 'Salva',
+                'entry_price': 'Prezzo Ingresso', 'stop_loss': 'Stop Loss', 'take_profit': 'Take Profit',
+                'position_type': 'Posizione', 'leverage': 'Leva', 'notes': 'Note', 'calculate': 'Calcola',
+                'export_csv': 'Esporta CSV', 'clear_results': 'Pulisci',
+                'update_manager': 'Gestione Aggiornamenti', 'current_version': 'Attuale', 'latest_version': 'Ultima',
+                'checking_update': 'Verifica...', 'update_available': 'Aggiornamento Disp.', 'up_to_date': 'Aggiornato',
+                'update_now': 'Aggiorna Ora', 'select_version': 'Seleziona Versione', 'install_version': 'Installa',
+                'updating': 'Aggiornamento...', 'update_success': 'Successo', 'update_error': 'Errore',
+                'advanced_settings': 'Impostazioni Avanzate', 'api_settings': 'Impostazioni API', 'refresh_rate': 'Aggiornamento (s)',
+                'save_all': 'Salva Tutto', 'keys_saved': 'Salvato',
+                'trade_history': 'Cronologia', 'no_trades': 'Nessun trade', 'clear_history_confirm': 'Sei sicuro?',
+                'charts_analysis': 'Analisi', 'pnl_chart': 'Grafico P&L', 'enter_trade_first': 'Calcola prima',
+                'success': 'Successo', 'error': 'Errore', 'info': 'Info', 'confirm': 'Conferma',
+                'save_success': 'Salvato con successo', 'calc_success': 'Fatto', 'enter_valid': 'Valori non validi',
+                'enter_tp': 'Inserisci almeno 1 TP', 'restart_required': 'Riavvia l\'app'
+            },
+            'bg': { # Bulgarian
+                'app_title': 'Крипто Трейдинг Калкулатор', 'version': 'Версия',
+                'light_mode': 'Светъл режим', 'dark_mode': 'Тъмен режим',
+                'settings': 'Настройки', 'history': 'История', 'charts': 'Графики', 'update': 'Обнови',
+                'exchange_symbol': 'Борса и Символ', 'capital_risk': 'Капитал и Риск',
+                'trade_info': 'Търговска информация', 'results': 'Резултати',
+                'exchange': 'Борса', 'order_type': 'Тип поръчка', 'symbol': 'Символ',
+                'live_price': 'Цена на живо', 'fetching_price': 'Зареждане...', 'price_error': 'Грешка',
+                'total_capital': 'Общ капитал', 'risk_percent': 'Риск (%)',
+                'fee_percent': 'Такса (%)', 'save_settings': 'Запази',
+                'entry_price': 'Входна цена', 'stop_loss': 'Стоп лос', 'take_profit': 'Тейк профит',
+                'position_type': 'Позиция', 'leverage': 'Ливъридж', 'notes': 'Бележки', 'calculate': 'Изчисли',
+                'export_csv': 'Експорт CSV', 'clear_results': 'Изчисти',
+                'update_manager': 'Мениджър обновявания', 'current_version': 'Текуща', 'latest_version': 'Последна',
+                'checking_update': 'Проверка...', 'update_available': 'Налично обновяване', 'up_to_date': 'Обновено е',
+                'update_now': 'Обнови сега', 'select_version': 'Избери версия', 'install_version': 'Инсталирай',
+                'updating': 'Обновяване...', 'update_success': 'Успешно', 'update_error': 'Грешка',
+                'advanced_settings': 'Разширени настройки', 'api_settings': 'API настройки', 'refresh_rate': 'Обновяване (сек)',
+                'save_all': 'Запази всички', 'keys_saved': 'Запазено',
+                'trade_history': 'История на търговия', 'no_trades': 'Няма сделки', 'clear_history_confirm': 'Сигурни ли сте?',
+                'charts_analysis': 'Анализ', 'pnl_chart': 'P&L Графика', 'enter_trade_first': 'Първо изчисли',
+                'success': 'Успешно', 'error': 'Грешка', 'info': 'Инфо', 'confirm': 'Потвърди',
+                'save_success': 'Запазено успешно', 'calc_success': 'Готово', 'enter_valid': 'Невалидни стойности',
+                'enter_tp': 'Въведи поне 1 TP', 'restart_required': 'Рестартирай приложението'
             }
         }
     
@@ -221,16 +294,14 @@ class Language:
         return self.translations.get(self.current, {}).get(key, default)
     
     def set_language(self, lang_code):
-        """Set current language (fa or en)"""
+        """Set current language"""
         if lang_code in self.translations:
             self.current = lang_code
             return True
         return False
     
     def get_current(self):
-        """Get current language code"""
         return self.current
     
     def get_all(self):
-        """Get all translations for current language"""
         return self.translations.get(self.current, {})

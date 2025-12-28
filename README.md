@@ -1,20 +1,10 @@
-# 📊 Crypto Trading Calculator
+# Crypto Trading Calculator
 
-## v1.6.1 (Hotfix)
+## v1.6.4 (Hotfix)
 
-- Settings window now includes **API Key/Secret** section per exchange and persists them in `config.json`. [file:1]
-- Font download is now **non-blocking** and uses multiple sources (GitHub raw + jsDelivr mirror) to reduce failures in some networks. [file:2][web:136]
-- Dark mode and language switching remain instant and are saved in config. [file:2]
+- Restored **real Settings** window (General + API Keys) and restored **language setting** (top bar + Settings). 
+- Fixed dark theme consistency by replacing white system dialogs with themed windows.
+- Fixed auto-update reliability: update is staged to `main_update.py` and applied via an external script after app exits.
+- History and chart windows are back (History table + equity curve from saved trades).
 
-## Install
-
-```bash
-git clone https://github.com/Qfndr/crypto-trading-calculator.git
-cd crypto-trading-calculator
-pip install -r requirements.txt
-python main.py
-```
-
-## Update (Important)
-
-The Update button checks the `VERSION` from remote `main.py` on GitHub and updates core files from the `main` branch (it does not require GitHub Releases). [file:2]
+Data is stored in: `C:\Users\<YOU>\.crypto_calculator\` on Windows.

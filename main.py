@@ -1,364 +1,880 @@
-import tkinter as tk
-from tkinter import ttk, messagebox, filedialog, font as tkfont
 import os
 import sys
-import ctypes
-from datetime import datetime
-import threading
-import requests
-import time
 import json
-import webbrowser
+import time
+import re
+import csv
+import ctypes
+import threading
+import subprocess
+from datetime import datetime
 
-VERSION = "1.6.3"
+import tkinter as tk
+from tkinter import ttk
+from tkinter import font as tkfont
 
-# --- CONSTANTS & PATHS ---
-# Store data in User Home to avoid Permission Denied on Windows Program Files
+try:
+    import requests
+except Exception:
+    requests = None
+
+VERSION = "1.6.4"
+
+# ----------------------------
+# Paths (avoid PermissionError)
+# ----------------------------
 APP_DATA_DIR = os.path.join(os.path.expanduser("~"), ".crypto_calculator")
-if not os.path.exists(APP_DATA_DIR):
-    os.makedirs(APP_DATA_DIR)
+os.makedirs(APP_DATA_DIR, exist_ok=True)
 
-CONFIG_FILE = os.path.join(APP_DATA_DIR, 'config.json')
-HISTORY_FILE = os.path.join(APP_DATA_DIR, 'trade_history.json')
-FONT_FILE = os.path.join(APP_DATA_DIR, "Vazirmatn-Regular.ttf")
+CONFIG_PATH = os.path.join(APP_DATA_DIR, "config.json")
+HISTORY_PATH = os.path.join(APP_DATA_DIR, "trade_history.json")
+FONT_PATH = os.path.join(APP_DATA_DIR, "Vazirmatn-Regular.ttf")
 
+PROJECT_DIR = os.path.dirname(os.path.abspath(sys.argv[0]))
+
+# ----------------------------
+# Font download + Windows load
+# ----------------------------
 FONT_URLS = [
     "https://raw.githubusercontent.com/rastikerdar/vazirmatn/master/fonts/ttf/Vazirmatn-Regular.ttf",
     "https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/fonts/ttf/Vazirmatn-Regular.ttf",
 ]
 
-# --- MODULES (Embedded or Imported) ---
-# We redefine classes to use APP_DATA_DIR paths
+
+def _load_custom_font_windows(font_path: str) -> bool:
+    if not sys.platform.startswith("win"):
+        return False
+    try:
+        buf = ctypes.create_unicode_buffer(os.path.abspath(font_path))
+        # FR_PRIVATE = 0x10
+        added = ctypes.windll.gdi32.AddFontResourceExW(buf, 0x10, 0)
+        return added > 0
+    except Exception:
+        return False
+
+
+def _download_font_async(on_done=None):
+    if os.path.exists(FONT_PATH) or not requests:
+        if on_done:
+            on_done()
+        return
+
+    def run():
+        for url in FONT_URLS:
+            try:
+                r = requests.get(url, timeout=15, stream=True)
+                if r.status_code != 200:
+                    continue
+                with open(FONT_PATH, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=64 * 1024):
+                        if chunk:
+                            f.write(chunk)
+                break
+            except Exception:
+                continue
+        if on_done:
+            on_done()
+
+    threading.Thread(target=run, daemon=True).start()
+
+
+# ----------------------------
+# Config + History
+# ----------------------------
 class Config:
     def __init__(self):
-        self.config_file = CONFIG_FILE
-        self.data = self.load_config()
-        self.capital = self.data.get('capital', 1000)
-        self.risk_percent = self.data.get('risk_percent', 1.0)
-        self.fee_percent = self.data.get('fee_percent', 0.04)
-        self.selected_exchange = self.data.get('selected_exchange', 'Binance')
-        self.theme = self.data.get('theme', 'light')
-        self.language = self.data.get('language', 'fa')
-        self.api_keys = self.data.get('api_keys', {})
+        self.data = {}
+        self.load()
 
-    def load_config(self):
-        if os.path.exists(self.config_file):
+    def load(self):
+        if os.path.exists(CONFIG_PATH):
             try:
-                with open(self.config_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except: return {}
-        return {}
+                with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                    self.data = json.load(f)
+            except Exception:
+                self.data = {}
 
-    def save_config(self, cap, risk, fee, ex, order, theme, lang):
-        self.data.update({
-            'capital': cap, 'risk_percent': risk, 'fee_percent': fee,
-            'selected_exchange': ex, 'theme': theme, 'language': lang,
-            'api_keys': self.api_keys
-        })
-        with open(self.config_file, 'w', encoding='utf-8') as f:
-            json.dump(self.data, f, indent=4)
+        self.capital = float(self.data.get("capital", 1000))
+        self.risk_percent = float(self.data.get("risk_percent", 1.0))
+        self.fee_percent = float(self.data.get("fee_percent", 0.04))
+        self.selected_exchange = self.data.get("selected_exchange", "Binance")
+        self.order_type = self.data.get("order_type", "taker")
+        self.theme = self.data.get("theme", "dark")
+        self.language = self.data.get("language", "fa")
+        self.api_keys = self.data.get("api_keys", {})
 
-    def get_api_credentials(self, ex): return self.api_keys.get(ex, {'api_key':'','api_secret':''})
-    def set_api_credentials(self, ex, k, s): 
-        self.api_keys[ex] = {'api_key':k, 'api_secret':s}
-        self.save_config(self.capital, self.risk_percent, self.fee_percent, self.selected_exchange, 'taker', self.theme, self.language)
+    def save(self):
+        self.data.update(
+            {
+                "capital": self.capital,
+                "risk_percent": self.risk_percent,
+                "fee_percent": self.fee_percent,
+                "selected_exchange": self.selected_exchange,
+                "order_type": self.order_type,
+                "theme": self.theme,
+                "language": self.language,
+                "api_keys": self.api_keys,
+                "last_updated": datetime.now().isoformat(),
+            }
+        )
+        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(self.data, f, ensure_ascii=False, indent=2)
+
+    def get_api_credentials(self, ex: str):
+        return self.api_keys.get(ex, {"api_key": "", "api_secret": ""})
+
+    def set_api_credentials(self, ex: str, api_key: str, api_secret: str):
+        self.api_keys[ex] = {"api_key": api_key or "", "api_secret": api_secret or ""}
+        self.save()
+
 
 class TradeHistory:
     def __init__(self):
-        self.history_file = HISTORY_FILE
-        self.trades = self.load()
+        self.trades = []
+        self.load()
 
     def load(self):
-        if os.path.exists(self.history_file):
+        if os.path.exists(HISTORY_PATH):
             try:
-                with open(self.history_file, 'r', encoding='utf-8') as f: return json.load(f)
-            except: return []
-        return []
+                with open(HISTORY_PATH, "r", encoding="utf-8") as f:
+                    self.trades = json.load(f) or []
+            except Exception:
+                self.trades = []
 
-    def add_trade(self, t):
-        self.trades.append(t)
-        with open(self.history_file, 'w', encoding='utf-8') as f:
-            json.dump(self.trades, f, indent=4)
-    
-    def export_to_csv(self, filename):
-        import csv
-        if not self.trades: return False
-        keys = self.trades[0].keys()
-        with open(filename, 'w', newline='', encoding='utf-8-sig') as f:
-            w = csv.DictWriter(f, fieldnames=keys); w.writeheader(); w.writerows(self.trades)
+    def add_trade(self, trade: dict):
+        self.trades.append(trade)
+        with open(HISTORY_PATH, "w", encoding="utf-8") as f:
+            json.dump(self.trades, f, ensure_ascii=False, indent=2)
+
+    def export_csv(self, filename: str) -> bool:
+        if not self.trades:
+            return False
+        keys = sorted({k for t in self.trades for k in t.keys()})
+        with open(filename, "w", newline="", encoding="utf-8-sig") as f:
+            w = csv.DictWriter(f, fieldnames=keys)
+            w.writeheader()
+            w.writerows(self.trades)
         return True
 
-class APIManager:
-    exchanges = {
-        'Binance': 'https://binance.com', 'Bybit': 'https://bybit.com', 
-        'OKX': 'https://okx.com', 'KuCoin': 'https://kucoin.com', 
-        'Gate.io': 'https://gate.io', 'Bitget': 'https://bitget.com', 
-        'MEXC': 'https://mexc.com', 'CoinEx': 'https://coinex.com',
-        'Nobitex': 'https://nobitex.ir', 'Wallex': 'https://wallex.ir'
-    }
-    def get_available_symbols(self): return ['BTCUSDT','ETHUSDT','SOLUSDT','TONUSDT','DOGEUSDT']
-    def get_price(self, e, s): 
-        # Simulation for now, can be replaced with real requests
-        return 98500.0 if 'BTC' in s else (2700.0 if 'ETH' in s else 1.0)
 
-class Language:
-    def __init__(self):
-        self.current = 'fa'
-        self.translations = {
-            'en': {'app_title': 'Crypto Calculator', 'settings': 'Settings', 'history': 'History', 'charts': 'Charts', 'update': 'Update', 'help': 'Help/Learn', 'saved': 'Saved!'},
-            'fa': {'app_title': 'ماشین حساب ترید کریپتو', 'settings': 'تنظیمات', 'history': 'تاریخچه', 'charts': 'نمودارها', 'update': 'آپدیت', 'help': 'آموزش', 'saved': 'ذخیره شد'}
-        }
-        # Add minimal fallbacks for other langs
-        for l in ['tr','ru','ar','hi','zh','ja','fr','it','bg']: self.translations[l] = self.translations['en']
+# ----------------------------
+# Exchange info + Help content
+# ----------------------------
+EXCHANGES = {
+    "Binance": {
+        "home": "https://www.binance.com/",
+        "api_help": "https://www.binance.com/en/support/faq/detail/360002502072",
+        "api_docs": "https://www.binance.com/en/binance-api",
+    },
+    "Bybit": {
+        "home": "https://www.bybit.com/",
+        "api_help": "https://www.bybit.com/en/help-center/article/How-to-create-your-API-key",
+        "api_mgmt": "https://www.bybit.com/app/user/api-management",
+        "testnet_api_mgmt": "https://testnet.bybit.com/app/user/api-management",
+    },
+    "OKX": {
+        "home": "https://www.okx.com/",
+        "api_docs": "https://www.okx.com/docs-v5/en/",
+    },
+    "KuCoin": {"home": "https://www.kucoin.com/"},
+    "Gate.io": {"home": "https://www.gate.io/"},
+    "Bitget": {"home": "https://www.bitget.com/"},
+    "MEXC": {"home": "https://www.mexc.com/"},
+    "CoinEx": {"home": "https://www.coinex.com/"},
+}
 
-    def get(self, k):
-        return self.translations.get(self.current, self.translations['en']).get(k, k)
-    
-    def set_language(self, l): self.current = l
+TERMS_FA = {
+    "TP (Take Profit)": "هدف سود؛ قیمتی که می‌خواهی در آن بخشی/کل پوزیشن را با سود ببندی.",
+    "SL (Stop Loss)": "حد ضرر؛ قیمتی که اگر بازار بر خلاف تو رفت، برای محدود کردن ضرر از معامله خارج می‌شوی.",
+    "Leverage (لوریج)": "اهرم؛ چند برابر کردن ارزش پوزیشن نسبت به سرمایه. لوریج بالا ریسک لیکویید شدن را زیاد می‌کند.",
+    "Position Size": "اندازه پوزیشن (USDT) بر اساس ریسک؛ یعنی با خوردن SL دقیقاً همان مقدار ریسک تعیین‌شده را از دست بدهی.",
+    "R/R": "نسبت ریسک به ریوارد؛ یعنی سود احتمالی چند برابر ریسک است.",
+}
 
+
+# ----------------------------
+# Updater (cache-bust + safe replace)
+# ----------------------------
 class Updater:
-    def __init__(self, current): self.current_version = current
+    RAW_MAIN = "https://raw.githubusercontent.com/Qfndr/crypto-trading-calculator/main/main.py"
+
+    def __init__(self, current_version: str):
+        self.current_version = current_version
+
+    def _fetch_remote_main(self) -> str:
+        if not requests:
+            raise RuntimeError("requests is not installed")
+        url = f"{self.RAW_MAIN}?t={int(time.time())}"
+        headers = {"Cache-Control": "no-cache", "Pragma": "no-cache"}
+        r = requests.get(url, timeout=10, headers=headers)
+        if r.status_code != 200:
+            raise RuntimeError(f"HTTP {r.status_code}")
+        return r.text
+
     def check_for_update(self):
         try:
-            # Cache busting with timestamp
-            url = f"https://raw.githubusercontent.com/Qfndr/crypto-trading-calculator/main/main.py?t={int(time.time())}"
-            r = requests.get(url, timeout=5)
-            if r.status_code==200:
-                import re
-                m = re.search(r'VERSION\s*=\s*"([^"]+)"', r.text)
-                if m:
-                    rem_v = m.group(1)
-                    return {'available': rem_v != self.current_version, 'latest': rem_v}
-        except: pass
-        return {'available': False, 'latest': self.current_version}
-    
-    def update_to_latest(self):
+            text = self._fetch_remote_main()
+            m = re.search(r'^VERSION\s*=\s*"([^"]+)"', text, flags=re.MULTILINE)
+            if not m:
+                return {"available": False, "latest": self.current_version, "error": "VERSION not found"}
+            latest = m.group(1).strip()
+            available = latest != self.current_version
+            return {"available": available, "latest": latest}
+        except Exception as e:
+            return {"available": False, "latest": self.current_version, "error": str(e)}
+
+    def stage_update(self):
+        """Download main.py as main_update.py and create an update script to swap after exit."""
+        text = self._fetch_remote_main()
+        update_py = os.path.join(PROJECT_DIR, "main_update.py")
+        with open(update_py, "w", encoding="utf-8") as f:
+            f.write(text)
+
+        # Create a windows-friendly update script
+        if sys.platform.startswith("win"):
+            bat_path = os.path.join(PROJECT_DIR, "apply_update.bat")
+            py_exe = sys.executable
+            with open(bat_path, "w", encoding="utf-8") as f:
+                f.write("@echo off\n")
+                f.write("timeout /t 1 /nobreak >nul\n")
+                f.write("copy /Y main_update.py main.py >nul\n")
+                f.write("del main_update.py >nul\n")
+                f.write(f"\"{py_exe}\" \"{os.path.join(PROJECT_DIR,'main.py')}\"\n")
+            return {"success": True, "runner": bat_path}
+
+        # Linux/macOS
+        sh_path = os.path.join(PROJECT_DIR, "apply_update.sh")
+        with open(sh_path, "w", encoding="utf-8") as f:
+            f.write("#!/bin/sh\n")
+            f.write("sleep 1\n")
+            f.write("cp -f main_update.py main.py\n")
+            f.write("rm -f main_update.py\n")
+            f.write(f"\"{sys.executable}\" \"{os.path.join(PROJECT_DIR,'main.py')}\"\n")
         try:
-            url = f"https://raw.githubusercontent.com/Qfndr/crypto-trading-calculator/main/main.py?t={int(time.time())}"
-            r = requests.get(url)
-            if r.status_code==200:
-                # We can't overwrite running file easily on Windows usually, 
-                # but we can try renaming or writing new file and asking restart
-                with open("main_new.py", 'w', encoding='utf-8') as f: f.write(r.text)
-                
-                # Replace logic (Linux/Basic) - Windows might need a bat file wrapper for true auto-update
-                # For now, we overwrite main.py directly (works if not locked, which python file usually isn't in some modes)
-                with open("main.py", 'w', encoding='utf-8') as f: f.write(r.text)
-                return {'success': True}
-        except Exception as e: return {'success': False, 'message': str(e)}
+            os.chmod(sh_path, 0o755)
+        except Exception:
+            pass
+        return {"success": True, "runner": sh_path}
 
-# --- FONT HELPERS ---
-def _load_custom_font_windows(path):
-    if not sys.platform.startswith('win'): return False
-    try:
-        path_buf = ctypes.create_unicode_buffer(os.path.abspath(path))
-        flags = 0x10
-        ctypes.windll.gdi32.AddFontResourceExW(path_buf, flags, 0)
-        return True
-    except: return False
 
-def _dl_font_async(cb):
-    if os.path.exists(FONT_FILE):
-        if cb: cb()
-        return
-    def r():
-        for u in FONT_URLS:
-            try:
-                res = requests.get(u, timeout=10)
-                if res.status_code==200:
-                    with open(FONT_FILE, 'wb') as f: f.write(res.content)
-                    if cb: cb()
-                    return
-            except: continue
-    threading.Thread(target=r, daemon=True).start()
-
-# --- MAIN APP ---
-class CryptoTradingCalculator:
-    def __init__(self, root):
+# ----------------------------
+# UI
+# ----------------------------
+class App:
+    def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
-        
-        # Init Modules
-        self.config = Config()
-        self.language = Language()
-        if self.config.language: self.language.set_language(self.config.language)
-        
-        self.history = TradeHistory()
-        self.api_manager = APIManager()
+        self.cfg = Config()
+        self.hist = TradeHistory()
+        self.lang = self.cfg.language
+        self.theme_name = self.cfg.theme
         self.updater = Updater(VERSION)
-        
-        self.current_theme = self.config.theme
 
-        # Font
-        _dl_font_async(self._reload_ui)
+        _download_font_async(self._on_font_ready)
         self._setup_fonts()
-        
-        self.root.title(f"{self.language.get('app_title')} v{VERSION}")
+        self._setup_theme()
+
+        self.root.title(f"{self.t('app_title')} v{VERSION}")
         self.root.geometry("1300x850")
-        
+        self.root.minsize(1000, 700)
+
         self.build_ui()
 
-    def _reload_ui(self):
-        self.root.after(0, lambda: [self._setup_fonts(), self.build_ui()])
+    # ---- i18n ----
+    def t(self, key: str) -> str:
+        fa = {
+            "app_title": "ماشین حساب ترید کریپتو",
+            "help": "آموزش",
+            "settings": "تنظیمات",
+            "history": "تاریخچه",
+            "charts": "نمودارها",
+            "update": "آپدیت",
+            "theme": "تم",
+            "language": "زبان",
+            "exchange": "صرافی",
+            "symbol": "سمبل",
+            "live_price": "قیمت لحظه‌ای",
+            "capital": "سرمایه (USDT)",
+            "risk": "درصد ریسک (%)",
+            "fee": "کارمزد (%)",
+            "save": "ذخیره",
+            "entry": "قیمت ورود",
+            "sl": "استاپ لاس (SL)",
+            "pos_type": "نوع معامله",
+            "lev": "لوریج",
+            "calculate": "محاسبه",
+            "results": "نتایج",
+            "api_keys": "API Keys",
+            "general": "عمومی",
+            "export_csv": "خروجی CSV",
+            "close": "بستن",
+        }
+        en = {
+            "app_title": "Crypto Trading Calculator",
+            "help": "Help/Learn",
+            "settings": "Settings",
+            "history": "History",
+            "charts": "Charts",
+            "update": "Update",
+            "theme": "Theme",
+            "language": "Language",
+            "exchange": "Exchange",
+            "symbol": "Symbol",
+            "live_price": "Live Price",
+            "capital": "Capital (USDT)",
+            "risk": "Risk %",
+            "fee": "Fee %",
+            "save": "Save",
+            "entry": "Entry",
+            "sl": "Stop Loss",
+            "pos_type": "Position",
+            "lev": "Leverage",
+            "calculate": "Calculate",
+            "results": "Results",
+            "api_keys": "API Keys",
+            "general": "General",
+            "export_csv": "Export CSV",
+            "close": "Close",
+        }
+        table = fa if self.lang == "fa" else en
+        return table.get(key, key)
+
+    # ---- theme/fonts ----
+    def _on_font_ready(self):
+        try:
+            self.root.after(0, lambda: (self._setup_fonts(), self.build_ui()))
+        except Exception:
+            pass
 
     def _setup_fonts(self):
-        if os.path.exists(FONT_FILE): _load_custom_font_windows(FONT_FILE)
-        avail = tkfont.families()
-        self.ff = 'Vazirmatn' if 'Vazirmatn' in avail else 'Segoe UI'
-        self.fonts = {
-            'h1': (self.ff, 20, 'bold'), 'h2': (self.ff, 14, 'bold'),
-            'body': (self.ff, 11), 'bold': (self.ff, 11, 'bold')
-        }
+        if os.path.exists(FONT_PATH):
+            _load_custom_font_windows(FONT_PATH)
+        fams = tkfont.families()
+        self.ff = "Vazirmatn" if "Vazirmatn" in fams else ("Segoe UI" if "Segoe UI" in fams else "Arial")
+        self.f_h1 = (self.ff, 18, "bold")
+        self.f_h2 = (self.ff, 13, "bold")
+        self.f_b = (self.ff, 11)
+        self.f_bb = (self.ff, 11, "bold")
 
-    def _theme_colors(self):
-        if self.current_theme == 'light':
-            return {'bg': '#f3f4f6', 'fg': '#1f2937', 'card': '#ffffff', 'primary': '#2563eb', 'primary_fg': '#ffffff', 'success': '#10b981'}
+    def _setup_theme(self):
+        if self.theme_name == "light":
+            self.theme = {
+                "bg": "#f3f4f6",
+                "fg": "#111827",
+                "card": "#ffffff",
+                "input": "#ffffff",
+                "border": "#e5e7eb",
+                "primary": "#2563eb",
+                "primary_fg": "#ffffff",
+            }
         else:
-            return {'bg': '#111827', 'fg': '#f9fafb', 'card': '#1f2937', 'primary': '#3b82f6', 'primary_fg': '#ffffff', 'success': '#34d399'}
+            self.theme = {
+                "bg": "#0b1220",
+                "fg": "#e5e7eb",
+                "card": "#152033",
+                "input": "#1f2a44",
+                "border": "#25324d",
+                "primary": "#3b82f6",
+                "primary_fg": "#ffffff",
+            }
 
-    def build_ui(self):
-        for w in self.root.winfo_children(): w.destroy()
-        self.colors = self._theme_colors()
-        self.root.configure(bg=self.colors['bg'])
-        
+    def _apply_ttk_styles(self):
         style = ttk.Style()
-        style.theme_use('clam')
-        style.configure('TNotebook', background=self.colors['bg'])
-        style.configure('TNotebook.Tab', font=self.fonts['bold'])
+        style.theme_use("clam")
+        style.configure("TLabel", font=self.f_b)
+        style.configure(
+            "Treeview",
+            background=self.theme["input"],
+            foreground=self.theme["fg"],
+            fieldbackground=self.theme["input"],
+            rowheight=24,
+        )
+        style.configure("Treeview.Heading", font=self.f_bb)
+        style.map("Treeview", background=[("selected", self.theme["primary"])])
 
-        # Header
-        h = tk.Frame(self.root, bg=self.colors['card'], height=60)
-        h.pack(fill='x')
-        tk.Label(h, text=f"📊 {self.language.get('app_title')}", font=self.fonts['h1'], bg=self.colors['card'], fg=self.colors['fg']).pack(side='left', padx=20, pady=10)
-        
-        btns = tk.Frame(h, bg=self.colors['card'])
-        btns.pack(side='right', padx=20)
-        
-        self.btn(btns, "📚 "+self.language.get('help'), self.open_help).pack(side='left', padx=5)
-        self.btn(btns, "⚙️ "+self.language.get('settings'), self.open_settings).pack(side='left', padx=5)
-        self.btn(btns, "📋 "+self.language.get('history'), self.open_history).pack(side='left', padx=5)
-        self.btn(btns, "📈 "+self.language.get('charts'), self.open_charts).pack(side='left', padx=5)
-        self.btn(btns, "🔄 "+self.language.get('update'), self.check_update).pack(side='left', padx=5)
-        self.btn(btns, "🌓", self.toggle_theme).pack(side='left', padx=5)
+    # ---- build UI ----
+    def build_ui(self):
+        for w in self.root.winfo_children():
+            w.destroy()
 
-        # Body
-        c = tk.Canvas(self.root, bg=self.colors['bg'], highlightthickness=0)
-        c.pack(fill='both', expand=True)
-        f = tk.Frame(c, bg=self.colors['bg'])
-        c.create_window((0,0), window=f, anchor='nw')
-        
-        # Cards
-        self.card_exchange(f)
-        self.card_capital(f)
-        self.card_trade(f)
-        self.card_results(f)
-        
-        f.update_idletasks()
-        c.configure(scrollregion=c.bbox('all'))
+        self._setup_theme()
+        self.root.configure(bg=self.theme["bg"])
+        self._apply_ttk_styles()
 
-    def btn(self, p, t, c, primary=False):
-        bg = self.colors['primary'] if primary else self.colors['card']
-        fg = self.colors['primary_fg'] if primary else self.colors['fg']
-        return tk.Button(p, text=t, command=c, bg=bg, fg=fg, font=self.fonts['bold'], relief='flat')
+        header = tk.Frame(self.root, bg=self.theme["card"], height=56)
+        header.pack(fill="x")
+        header.pack_propagate(False)
 
-    def card_exchange(self, p):
-        f = self.card_frame(p, "Exchange")
-        self.cb_ex = ttk.Combobox(f, values=list(self.api_manager.exchanges.keys())); self.cb_ex.pack(pady=5); self.cb_ex.set(self.config.selected_exchange)
-        self.cb_sym = ttk.Combobox(f, values=self.api_manager.get_available_symbols()); self.cb_sym.pack(pady=5); self.cb_sym.set('BTCUSDT')
-        self.btn(f, "Live Price", self.fetch_price, True).pack(pady=5)
-        self.lbl_p = tk.Label(f, text='---', bg=self.colors['card'], fg=self.colors['fg']); self.lbl_p.pack()
+        tk.Label(
+            header,
+            text=f"📊 {self.t('app_title')}",
+            bg=self.theme["card"],
+            fg=self.theme["fg"],
+            font=self.f_h1,
+        ).pack(side="left", padx=16)
 
-    def card_capital(self, p):
-        f = self.card_frame(p, "Capital & Risk")
-        self.ent_cap = self.entry(f, "Capital", self.config.capital)
-        self.ent_risk = self.entry(f, "Risk %", self.config.risk_percent)
-        self.btn(f, "Save", self.save_conf, True).pack(pady=10)
+        right = tk.Frame(header, bg=self.theme["card"])
+        right.pack(side="right", padx=12)
 
-    def card_trade(self, p):
-        f = self.card_frame(p, "Trade Info")
-        self.ent_ep = self.entry(f, "Entry", "")
-        self.ent_sl = self.entry(f, "Stop Loss", "")
-        self.ent_lev = self.entry(f, "Leverage", "10")
-        self.btn(f, "Calculate", self.calc, True).pack(pady=10)
+        # Language selector (restored)
+        tk.Label(right, text=self.t("language"), bg=self.theme["card"], fg=self.theme["fg"], font=self.f_b).pack(side="left", padx=(0, 6))
+        self.var_lang = tk.StringVar(value=self.lang)
+        cb_lang = ttk.Combobox(right, values=["fa", "en"], textvariable=self.var_lang, state="readonly", width=4)
+        cb_lang.pack(side="left", padx=6)
+        cb_lang.bind("<<ComboboxSelected>>", lambda e: self.set_language(self.var_lang.get()))
 
-    def card_results(self, p):
-        f = self.card_frame(p, "Results")
-        self.txt = tk.Text(f, height=10); self.txt.pack(fill='x')
+        self._hbtn(right, f"📚 {self.t('help')}", self.open_help)
+        self._hbtn(right, f"⚙️ {self.t('settings')}", self.open_settings)
+        self._hbtn(right, f"📋 {self.t('history')}", self.open_history)
+        self._hbtn(right, f"📈 {self.t('charts')}", self.open_charts)
+        self._hbtn(right, f"🔄 {self.t('update')}", self.check_update)
+        self._hbtn(right, "🌓", self.toggle_theme)
 
-    def card_frame(self, p, t):
-        fr = tk.Frame(p, bg=self.colors['card'], bd=1, relief='solid')
-        fr.pack(fill='x', padx=20, pady=10)
-        tk.Label(fr, text=t, font=self.fonts['h2'], bg=self.colors['card'], fg=self.colors['fg']).pack(anchor='w', padx=10, pady=5)
-        return fr
+        body = tk.Frame(self.root, bg=self.theme["bg"])
+        body.pack(fill="both", expand=True)
 
-    def entry(self, p, l, v):
-        tk.Label(p, text=l, bg=self.colors['card'], fg=self.colors['fg']).pack(anchor='w', padx=10)
-        e = tk.Entry(p); e.pack(fill='x', padx=10); 
-        if v: e.insert(0, str(v))
+        canvas = tk.Canvas(body, bg=self.theme["bg"], highlightthickness=0)
+        vscroll = ttk.Scrollbar(body, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=vscroll.set)
+        vscroll.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+
+        self.content = tk.Frame(canvas, bg=self.theme["bg"])
+        canvas.create_window((0, 0), window=self.content, anchor="nw")
+        self.content.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+
+        self._card_main()
+
+    def _hbtn(self, parent, text, cmd):
+        tk.Button(
+            parent,
+            text=text,
+            command=cmd,
+            bg=self.theme["card"],
+            fg=self.theme["fg"],
+            font=self.f_bb,
+            relief="flat",
+            activebackground=self.theme["bg"],
+            activeforeground=self.theme["fg"],
+        ).pack(side="left", padx=6)
+
+    def _card(self, title):
+        outer = tk.Frame(self.content, bg=self.theme["card"], bd=1, relief="solid")
+        outer.pack(fill="x", padx=18, pady=10)
+        tk.Label(outer, text=title, bg=self.theme["card"], fg=self.theme["fg"], font=self.f_h2).pack(anchor="w", padx=12, pady=10)
+        inner = tk.Frame(outer, bg=self.theme["card"])
+        inner.pack(fill="x", padx=12, pady=(0, 12))
+        return inner
+
+    def _entry_row(self, parent, label, default):
+        row = tk.Frame(parent, bg=self.theme["card"])
+        row.pack(fill="x", pady=6)
+        tk.Label(row, text=label, bg=self.theme["card"], fg=self.theme["fg"], font=self.f_b, width=16, anchor="w").pack(side="left")
+        e = tk.Entry(row, bg=self.theme["input"], fg=self.theme["fg"], insertbackground=self.theme["fg"], relief="flat", font=self.f_b)
+        e.pack(side="left", fill="x", expand=True)
+        if default != "":
+            e.insert(0, str(default))
         return e
 
-    # Logic
-    def fetch_price(self):
-        try:
-            p = self.api_manager.get_price(self.cb_ex.get(), self.cb_sym.get())
-            self.lbl_p.config(text=str(p))
-            self.ent_ep.delete(0, tk.END); self.ent_ep.insert(0, str(p))
-        except: self.lbl_p.config(text='Err')
+    def _card_main(self):
+        # Exchange
+        c1 = self._card("Exchange")
+        self.var_ex = tk.StringVar(value=self.cfg.selected_exchange)
+        cb_ex = ttk.Combobox(c1, values=list(EXCHANGES.keys()), textvariable=self.var_ex, state="readonly")
+        cb_ex.pack(anchor="w")
 
-    def calc(self):
-        try:
-            # Simple Calc Logic
-            ep=float(self.ent_ep.get()); sl=float(self.ent_sl.get()); cap=float(self.ent_cap.get())
-            risk=float(self.ent_risk.get()); lev=float(self.ent_lev.get())
-            risk_amt = cap * (risk/100)
-            diff = abs(ep-sl)/ep
-            sz = risk_amt/diff if diff>0 else 0
-            
-            res = f"Position: {sz:.2f}$ | Risk: {risk_amt:.2f}$"
-            self.txt.insert('1.0', res+"\n")
-            
-            self.history.add_trade({'date': datetime.now().strftime('%Y-%m-%d %H:%M'), 'symbol': self.cb_sym.get(), 'pnl': 0})
-        except Exception as e: messagebox.showerror("Error", str(e))
+        self.var_symbol = tk.StringVar(value="BTCUSDT")
+        cb_sym = ttk.Combobox(c1, values=["BTCUSDT", "ETHUSDT", "SOLUSDT", "TONUSDT", "DOGEUSDT"], textvariable=self.var_symbol, state="readonly")
+        cb_sym.pack(anchor="w", pady=6)
 
-    def save_conf(self):
-        self.config.save_config(float(self.ent_cap.get()), float(self.ent_risk.get()), 0.04, self.cb_ex.get(), 'taker', self.current_theme, self.language.current)
-        messagebox.showinfo("OK", "Saved")
+        self.lbl_price = tk.Label(c1, text="---", bg=self.theme["card"], fg=self.theme["fg"], font=self.f_bb)
+        self.lbl_price.pack(anchor="w")
+        tk.Button(c1, text=self.t("live_price"), command=self.fetch_price, bg=self.theme["primary"], fg=self.theme["primary_fg"], relief="flat", font=self.f_bb).pack(anchor="w", pady=6)
 
-    def toggle_theme(self):
-        self.current_theme = 'dark' if self.current_theme=='light' else 'light'
+        # Capital/Risk
+        c2 = self._card("Capital & Risk")
+        self.e_cap = self._entry_row(c2, self.t("capital"), self.cfg.capital)
+        self.e_risk = self._entry_row(c2, self.t("risk"), self.cfg.risk_percent)
+        self.e_fee = self._entry_row(c2, self.t("fee"), self.cfg.fee_percent)
+        tk.Button(c2, text=self.t("save"), command=self.save_main_settings, bg=self.theme["primary"], fg=self.theme["primary_fg"], relief="flat", font=self.f_bb).pack(anchor="w", pady=8)
+
+        # Trade
+        c3 = self._card("Trade")
+        self.e_entry = self._entry_row(c3, self.t("entry"), "")
+        self.e_sl = self._entry_row(c3, self.t("sl"), "")
+
+        row = tk.Frame(c3, bg=self.theme["card"])
+        row.pack(fill="x", pady=6)
+        tk.Label(row, text=self.t("pos_type"), bg=self.theme["card"], fg=self.theme["fg"], font=self.f_b, width=16, anchor="w").pack(side="left")
+        self.var_side = tk.StringVar(value="LONG")
+        cb_side = ttk.Combobox(row, values=["LONG", "SHORT"], state="readonly", textvariable=self.var_side, width=8)
+        cb_side.pack(side="left")
+
+        self.e_lev = self._entry_row(c3, self.t("lev"), "10")
+        self.e_tp1 = self._entry_row(c3, "TP1", "")
+        self.e_tp2 = self._entry_row(c3, "TP2", "")
+        self.e_tp3 = self._entry_row(c3, "TP3", "")
+
+        tk.Button(c3, text=self.t("calculate"), command=self.calculate, bg=self.theme["primary"], fg=self.theme["primary_fg"], relief="flat", font=self.f_bb).pack(anchor="w", pady=10)
+
+        # Results
+        c4 = self._card(self.t("results"))
+        self.txt = tk.Text(c4, height=10, bg=self.theme["input"], fg=self.theme["fg"], insertbackground=self.theme["fg"], relief="flat", font=("Consolas", 10))
+        self.txt.pack(fill="x")
+
+    # ---- actions ----
+    def set_language(self, lang: str):
+        self.lang = lang
+        self.cfg.language = lang
+        self.cfg.save()
+        self.root.title(f"{self.t('app_title')} v{VERSION}")
         self.build_ui()
 
-    # Windows
+    def toggle_theme(self):
+        self.theme_name = "light" if self.theme_name == "dark" else "dark"
+        self.cfg.theme = self.theme_name
+        self.cfg.save()
+        self.build_ui()
+
+    def save_main_settings(self):
+        try:
+            self.cfg.capital = float(self.e_cap.get())
+            self.cfg.risk_percent = float(self.e_risk.get())
+            self.cfg.fee_percent = float(self.e_fee.get())
+            self.cfg.selected_exchange = self.var_ex.get()
+            self.cfg.save()
+        except Exception:
+            self._toast(self.content, "Invalid settings")
+
+    def fetch_price(self):
+        # Placeholder (kept stable)
+        sym = self.var_symbol.get()
+        price = 98500.0 if sym.startswith("BTC") else (2700.0 if sym.startswith("ETH") else 1.0)
+        self.lbl_price.config(text=str(price))
+        self.e_entry.delete(0, tk.END)
+        self.e_entry.insert(0, str(price))
+
+    def calculate(self):
+        try:
+            entry = float(self.e_entry.get())
+            sl = float(self.e_sl.get())
+            cap = float(self.e_cap.get())
+            risk_pct = float(self.e_risk.get())
+            fee_pct = float(self.e_fee.get())
+            lev = float(self.e_lev.get())
+            side = self.var_side.get()
+            sym = self.var_symbol.get()
+
+            risk_amt = cap * (risk_pct / 100.0)
+            sl_diff = abs(entry - sl) / entry
+            if sl_diff <= 0:
+                raise ValueError("SL diff is 0")
+
+            pos_size = risk_amt / sl_diff  # USDT size without leverage
+            qty = (pos_size * lev) / entry
+
+            tps = []
+            for e in [self.e_tp1, self.e_tp2, self.e_tp3]:
+                if e.get().strip():
+                    tps.append(float(e.get()))
+
+            out = []
+            out.append(f"{datetime.now().strftime('%Y-%m-%d %H:%M')} | {sym} {side}")
+            out.append(f"Entry: {entry} | SL: {sl} | Lev: {lev}x")
+            out.append(f"Position Size: {pos_size:.2f} USDT | Qty: {qty:.6f}")
+            out.append(f"Risk: {risk_amt:.2f} USDT | Fee%: {fee_pct}")
+
+            last_pnl = 0.0
+            for i, tp in enumerate(tps, start=1):
+                pnl_gross = abs(tp - entry) * qty
+                # Simple fee model: entry+exit taker fee on notional (approx)
+                fee = (pos_size * lev) * (fee_pct / 100.0) * 2
+                pnl = pnl_gross - fee
+                last_pnl = pnl
+                out.append(f"TP{i}: {tp} -> PnL: {pnl:+.2f} USDT")
+
+            self.txt.insert("1.0", "\n".join(out) + "\n\n")
+
+            self.hist.add_trade(
+                {
+                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "exchange": self.var_ex.get(),
+                    "symbol": sym,
+                    "side": side,
+                    "entry": entry,
+                    "sl": sl,
+                    "leverage": lev,
+                    "risk_percent": risk_pct,
+                    "position_size": round(pos_size, 4),
+                    "qty": round(qty, 8),
+                    "last_tp_pnl": round(last_pnl, 4),
+                }
+            )
+
+        except Exception as e:
+            self._toast(self.content, f"Calc error: {e}")
+
+    def _toast(self, parent, text: str):
+        # themed non-blocking toast instead of messagebox
+        top = tk.Toplevel(self.root)
+        top.configure(bg=self.theme["card"])
+        top.overrideredirect(True)
+        top.attributes("-topmost", True)
+        tk.Label(top, text=text, bg=self.theme["card"], fg=self.theme["fg"], font=self.f_bb).pack(padx=12, pady=10)
+        x = self.root.winfo_rootx() + 40
+        y = self.root.winfo_rooty() + 80
+        top.geometry(f"+{x}+{y}")
+        top.after(1800, top.destroy)
+
+    # ---- windows (themed) ----
+    def open_settings(self):
+        w = tk.Toplevel(self.root)
+        w.title(self.t("settings"))
+        w.configure(bg=self.theme["bg"])
+        w.geometry("900x600")
+
+        nb = ttk.Notebook(w)
+        nb.pack(fill="both", expand=True, padx=10, pady=10)
+
+        tab_general = tk.Frame(nb, bg=self.theme["bg"])
+        tab_api = tk.Frame(nb, bg=self.theme["bg"])
+        nb.add(tab_general, text=self.t("general"))
+        nb.add(tab_api, text=self.t("api_keys"))
+
+        # General (restored language setting)
+        tk.Label(tab_general, text=self.t("language"), bg=self.theme["bg"], fg=self.theme["fg"], font=self.f_bb).pack(anchor="w", padx=10, pady=(10, 6))
+        var = tk.StringVar(value=self.lang)
+        cb = ttk.Combobox(tab_general, values=["fa", "en"], textvariable=var, state="readonly", width=6)
+        cb.pack(anchor="w", padx=10)
+
+        tk.Label(tab_general, text=self.t("theme"), bg=self.theme["bg"], fg=self.theme["fg"], font=self.f_bb).pack(anchor="w", padx=10, pady=(16, 6))
+        var_theme = tk.StringVar(value=self.theme_name)
+        cb_t = ttk.Combobox(tab_general, values=["dark", "light"], textvariable=var_theme, state="readonly", width=8)
+        cb_t.pack(anchor="w", padx=10)
+
+        def save_general():
+            self.set_language(var.get())
+            self.theme_name = var_theme.get()
+            self.cfg.theme = self.theme_name
+            self.cfg.save()
+            self.build_ui()
+
+        tk.Button(tab_general, text=self.t("save"), command=save_general, bg=self.theme["primary"], fg=self.theme["primary_fg"], relief="flat", font=self.f_bb).pack(anchor="w", padx=10, pady=20)
+
+        # API keys
+        tk.Label(tab_api, text="API Key / Secret per exchange", bg=self.theme["bg"], fg=self.theme["fg"], font=self.f_bb).pack(anchor="w", padx=10, pady=10)
+
+        holder = tk.Frame(tab_api, bg=self.theme["bg"])
+        holder.pack(fill="both", expand=True, padx=10, pady=10)
+
+        cvs = tk.Canvas(holder, bg=self.theme["bg"], highlightthickness=0)
+        sb = ttk.Scrollbar(holder, orient="vertical", command=cvs.yview)
+        cvs.configure(yscrollcommand=sb.set)
+        sb.pack(side="right", fill="y")
+        cvs.pack(side="left", fill="both", expand=True)
+
+        inner = tk.Frame(cvs, bg=self.theme["bg"])
+        cvs.create_window((0, 0), window=inner, anchor="nw")
+        inner.bind("<Configure>", lambda e: cvs.configure(scrollregion=cvs.bbox("all")))
+
+        tk.Label(inner, text="Exchange", bg=self.theme["bg"], fg=self.theme["fg"], font=self.f_bb, width=12, anchor="w").grid(row=0, column=0, padx=6, pady=6)
+        tk.Label(inner, text="API Key", bg=self.theme["bg"], fg=self.theme["fg"], font=self.f_bb, width=36, anchor="w").grid(row=0, column=1, padx=6, pady=6)
+        tk.Label(inner, text="Secret", bg=self.theme["bg"], fg=self.theme["fg"], font=self.f_bb, width=36, anchor="w").grid(row=0, column=2, padx=6, pady=6)
+
+        self._api_rows = {}
+        for i, ex in enumerate(EXCHANGES.keys(), start=1):
+            cred = self.cfg.get_api_credentials(ex)
+            tk.Label(inner, text=ex, bg=self.theme["bg"], fg=self.theme["fg"], font=self.f_b, anchor="w").grid(row=i, column=0, padx=6, pady=4, sticky="w")
+
+            e1 = tk.Entry(inner, bg=self.theme["input"], fg=self.theme["fg"], insertbackground=self.theme["fg"], relief="flat", width=40)
+            e1.grid(row=i, column=1, padx=6, pady=4, sticky="ew")
+            e1.insert(0, cred.get("api_key", ""))
+
+            e2 = tk.Entry(inner, bg=self.theme["input"], fg=self.theme["fg"], insertbackground=self.theme["fg"], relief="flat", width=40, show="*")
+            e2.grid(row=i, column=2, padx=6, pady=4, sticky="ew")
+            e2.insert(0, cred.get("api_secret", ""))
+
+            self._api_rows[ex] = (e1, e2)
+
+        def save_api():
+            for ex, (k, s) in self._api_rows.items():
+                self.cfg.set_api_credentials(ex, k.get().strip(), s.get().strip())
+            self._toast(self.content, "API keys saved")
+
+        tk.Button(tab_api, text=self.t("save"), command=save_api, bg=self.theme["primary"], fg=self.theme["primary_fg"], relief="flat", font=self.f_bb).pack(anchor="w", padx=10, pady=10)
+
+    def open_history(self):
+        w = tk.Toplevel(self.root)
+        w.title(self.t("history"))
+        w.configure(bg=self.theme["bg"])
+        w.geometry("950x520")
+
+        cols = ("timestamp", "exchange", "symbol", "side", "entry", "sl", "leverage", "risk_percent", "position_size", "qty", "last_tp_pnl")
+        tv = ttk.Treeview(w, columns=cols, show="headings")
+        for c in cols:
+            tv.heading(c, text=c)
+            tv.column(c, width=120, anchor="w")
+        tv.pack(fill="both", expand=True, padx=10, pady=10)
+
+        for t in self.hist.trades:
+            tv.insert("", "end", values=tuple(t.get(c, "") for c in cols))
+
+        bar = tk.Frame(w, bg=self.theme["bg"])
+        bar.pack(fill="x", padx=10, pady=(0, 10))
+
+        def export():
+            fn = os.path.join(APP_DATA_DIR, "history_export.csv")
+            ok = self.hist.export_csv(fn)
+            self._toast(self.content, f"Exported: {fn}" if ok else "No data")
+
+        tk.Button(bar, text=self.t("export_csv"), command=export, bg=self.theme["primary"], fg=self.theme["primary_fg"], relief="flat", font=self.f_bb).pack(side="left")
+
+    def open_charts(self):
+        w = tk.Toplevel(self.root)
+        w.title(self.t("charts"))
+        w.configure(bg=self.theme["bg"])
+        w.geometry("900x520")
+
+        cv = tk.Canvas(w, bg=self.theme["card"], highlightthickness=0)
+        cv.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Simple equity curve from last_tp_pnl
+        vals = [float(t.get("last_tp_pnl", 0) or 0) for t in self.hist.trades]
+        if not vals:
+            cv.create_text(450, 250, text="No data", fill=self.theme["fg"], font=self.f_h2)
+            return
+
+        eq = []
+        s = 0.0
+        for v in vals:
+            s += v
+            eq.append(s)
+
+        w_can = 860
+        h_can = 460
+        pad = 30
+        mx = max(eq)
+        mn = min(eq)
+        rng = (mx - mn) if mx != mn else 1.0
+
+        # axes
+        cv.create_rectangle(pad, pad, w_can, h_can, outline=self.theme["border"], width=1)
+
+        def xy(i, val):
+            x = pad + (i / max(1, len(eq) - 1)) * (w_can - pad * 2)
+            y = h_can - pad - ((val - mn) / rng) * (h_can - pad * 2)
+            return x, y
+
+        prev = None
+        for i, v in enumerate(eq):
+            x, y = xy(i, v)
+            if prev:
+                cv.create_line(prev[0], prev[1], x, y, fill=self.theme["primary"], width=2)
+            prev = (x, y)
+
+        cv.create_text(pad + 10, pad + 10, text=f"Equity: {eq[-1]:+.2f}", fill=self.theme["fg"], anchor="nw", font=self.f_bb)
+
     def open_help(self):
         w = tk.Toplevel(self.root)
-        w.title("Help & Learn"); w.geometry("800x600")
-        nb = ttk.Notebook(w); nb.pack(fill='both', expand=True)
-        
-        # Tabs
-        self.add_help_tab(nb, "Exchanges", "Binance: Global leader...\nBybit: Good for futures...\n\nAPI Setup:\n1. Go to Profile -> API Management\n2. Create New API\n3. Select 'Read Only' & 'Futures Trading'")
-        self.add_help_tab(nb, "Terms", "TP (Take Profit): Price to sell for profit.\nSL (Stop Loss): Price to sell to limit loss.\nLeverage: Borrowed funds multiplier (High Risk!).\nEntry: Price you bought/sold at.")
-        self.add_help_tab(nb, "Calculator Guide", "1. Set Capital & Risk (e.g. 1000$, 1%)\n2. Get Live Price\n3. Set SL\n4. Calculate!\n\nThis gives you exact Position Size to lose only 1% if SL hits.")
+        w.title(self.t("help"))
+        w.configure(bg=self.theme["bg"])
+        w.geometry("980x650")
 
-    def add_help_tab(self, nb, t, txt):
-        f = tk.Frame(nb); nb.add(f, text=t)
-        tk.Text(f, font=('Consolas', 11)).pack(fill='both', expand=True).insert('1.0', txt)
+        nb = ttk.Notebook(w)
+        nb.pack(fill="both", expand=True, padx=10, pady=10)
 
-    def open_settings(self): messagebox.showinfo("Settings", "API Keys Config Here (Implemented in v1.6.2)")
-    def open_history(self): messagebox.showinfo("History", "History Table Here")
-    def open_charts(self): messagebox.showinfo("Charts", "PnL Chart Here")
+        tab_terms = tk.Frame(nb, bg=self.theme["bg"])
+        tab_ex = tk.Frame(nb, bg=self.theme["bg"])
+        tab_api = tk.Frame(nb, bg=self.theme["bg"])
+        nb.add(tab_terms, text="Terms")
+        nb.add(tab_ex, text="Exchanges")
+        nb.add(tab_api, text="API Keys")
 
+        # Terms
+        txt = tk.Text(tab_terms, bg=self.theme["input"], fg=self.theme["fg"], insertbackground=self.theme["fg"], relief="flat", font=(self.ff, 11))
+        txt.pack(fill="both", expand=True, padx=10, pady=10)
+        if self.lang == "fa":
+            for k, v in TERMS_FA.items():
+                txt.insert("end", f"{k}\n{v}\n\n")
+        else:
+            txt.insert("end", "TP/SL/Leverage glossary will be expanded.\n")
+        txt.configure(state="disabled")
+
+        # Exchanges
+        wrap = tk.Frame(tab_ex, bg=self.theme["bg"])
+        wrap.pack(fill="both", expand=True, padx=10, pady=10)
+        for ex, info in EXCHANGES.items():
+            row = tk.Frame(wrap, bg=self.theme["card"], bd=1, relief="solid")
+            row.pack(fill="x", pady=6)
+            tk.Label(row, text=ex, bg=self.theme["card"], fg=self.theme["fg"], font=self.f_bb, width=12, anchor="w").pack(side="left", padx=10, pady=10)
+            tk.Label(row, text=info.get("home", ""), bg=self.theme["card"], fg=self.theme["fg"], font=self.f_b, anchor="w").pack(side="left", padx=10)
+            tk.Button(row, text="Open", command=lambda u=info.get("home", ""): self._open_url(u), bg=self.theme["primary"], fg=self.theme["primary_fg"], relief="flat", font=self.f_bb).pack(side="right", padx=10)
+
+        # API Keys
+        api_txt = tk.Text(tab_api, bg=self.theme["input"], fg=self.theme["fg"], insertbackground=self.theme["fg"], relief="flat", font=(self.ff, 11))
+        api_txt.pack(fill="both", expand=True, padx=10, pady=10)
+        api_txt.insert("end", "Security tip: for price/tracking use Read-Only permissions (no trading/withdraw).\n\n")
+        api_txt.insert("end", "Binance: create keys via API Management (guide link)\n")
+        api_txt.insert("end", f"- Guide: {EXCHANGES['Binance']['api_help']}\n- Docs: {EXCHANGES['Binance']['api_docs']}\n\n")
+        api_txt.insert("end", "Bybit: API Management URLs\n")
+        api_txt.insert("end", f"- Mainnet: {EXCHANGES['Bybit']['api_mgmt']}\n- Testnet: {EXCHANGES['Bybit']['testnet_api_mgmt']}\n- Guide: {EXCHANGES['Bybit']['api_help']}\n\n")
+        api_txt.insert("end", "OKX: API docs (see API key creation section)\n")
+        api_txt.insert("end", f"- Docs: {EXCHANGES['OKX']['api_docs']}\n\n")
+        api_txt.insert("end", "Other exchanges: open your profile/security section and look for API / API Management.\n")
+        api_txt.configure(state="disabled")
+
+    def _open_url(self, url: str):
+        if not url:
+            return
+        try:
+            import webbrowser
+            webbrowser.open(url)
+        except Exception:
+            pass
+
+    # ---- update ----
     def check_update(self):
         info = self.updater.check_for_update()
-        if info['available']:
-            if messagebox.askyesno("Update", f"New v{info['latest']} Available. Update?"):
-                self.updater.update_to_latest()
-                messagebox.showinfo("Done", "Updated! Restart App.")
-                self.root.destroy()
-        else: messagebox.showinfo("Update", "Up to date.")
+        if info.get("error"):
+            self._toast(self.content, f"Update check failed: {info['error']}")
+            return
+        if not info.get("available"):
+            self._toast(self.content, "Up to date")
+            return
 
-    def on_close(self): self.root.destroy()
+        # themed confirm dialog
+        dlg = tk.Toplevel(self.root)
+        dlg.title(self.t("update"))
+        dlg.configure(bg=self.theme["bg"])
+        dlg.geometry("420x180")
+        tk.Label(dlg, text=f"New version: {info.get('latest')}\nInstall now?", bg=self.theme["bg"], fg=self.theme["fg"], font=self.f_bb).pack(pady=20)
 
-if __name__ == '__main__':
+        btns = tk.Frame(dlg, bg=self.theme["bg"])
+        btns.pack(pady=10)
+
+        def do():
+            try:
+                st = self.updater.stage_update()
+                runner = st.get("runner")
+                dlg.destroy()
+                # Start runner then quit
+                if runner and sys.platform.startswith("win"):
+                    os.startfile(runner)
+                elif runner:
+                    subprocess.Popen([runner], cwd=PROJECT_DIR)
+                self.root.after(200, self.root.destroy)
+            except Exception as e:
+                dlg.destroy()
+                self._toast(self.content, f"Update failed: {e}")
+
+        tk.Button(btns, text="Yes", command=do, bg=self.theme["primary"], fg=self.theme["primary_fg"], relief="flat", font=self.f_bb, width=10).pack(side="left", padx=8)
+        tk.Button(btns, text="No", command=dlg.destroy, bg=self.theme["card"], fg=self.theme["fg"], relief="flat", font=self.f_bb, width=10).pack(side="left", padx=8)
+
+
+def main():
     root = tk.Tk()
-    app = CryptoTradingCalculator(root)
+    App(root)
     root.mainloop()
+
+
+if __name__ == "__main__":
+    main()

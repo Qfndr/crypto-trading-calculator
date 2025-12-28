@@ -1,24 +1,12 @@
 # Changelog
 
-## [1.6.0] - 2025-12-28 (The Rewrite)
+## [1.6.1] - 2025-12-28
 
-### 🏗 Complete Rewrite
-- **Core Logic:** Re-written from scratch for stability and performance.
-- **UI Architecture:** Switched from fragile glassmorphism to robust professional flat design.
-- **Font System:** Implemented native Windows API (ctypes) font loading for reliable Vazirmatn support.
-
-### ✨ New Features (Real Implementation)
-- **Advanced Settings:** Dedicated window for managing API Keys per exchange.
-- **Trade History:** Full tree-view of past trades with CSV export.
-- **Charts:** Built-in PnL curve visualization.
-- **Localization:** 11 fully supported languages with instant switching.
-- **Multi-TP:** Support for 3 distinct Take Profit levels.
-
-### 🐛 Fixes
-- Fixed "Coming Soon" placeholders (features are now implemented).
-- Fixed font loading issues on Windows.
-- Fixed UI glitches in language switching.
+### ✅ Fixes
+- Restored Settings content: API Key/Secret per exchange with persistence in `config.json`. [file:1]
+- Font download no longer blocks app startup; added jsDelivr mirror to improve accessibility. [file:2][web:136]
+- Update button now works without Releases/Tags by reading remote `VERSION` from `main.py`. [file:2]
 
 ---
-## [1.5.0] - 2025-12-28
-- *Legacy version (Removed due to instability)*
+## [1.6.0] - 2025-12-28
+- The Rewrite (initial). [file:2]

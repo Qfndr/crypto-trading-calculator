@@ -1,7 +1,11 @@
-## [1.6.6] - 2025-12-28
+## [1.7.0] - 2025-12-28
+
+### Changed
+- **Professional Update System**: Migrated from raw file checks to **GitHub Releases**.
+- App now checks `https://api.github.com/repos/Qfndr/crypto-trading-calculator/releases/latest`.
+- Downloads `main.py` asset attached to the release instead of raw code.
+- Version bump to 1.7.0 to signify architecture change.
 
 ### Fixed
-- Fixed app not starting (single Tk root + proper mainloop).
-- Fixed updater running from System32 by enforcing script directory in apply_update.bat (cd /d %~dp0).
-- Expanded language list to include fa,en,tr,ru,ar,hi,zh,ja,fr,it,bg (non-fa fall back to English strings).
-- Added basic error logging to %USERPROFILE%\.crypto_calculator\app.log.
+- Enforced absolute paths in update scripts.
+- Optimized imports and UI loading.

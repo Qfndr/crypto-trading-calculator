@@ -1,66 +1,38 @@
 """
-Automatic font downloader for Crypto Trading Calculator
-Downloads Vazirmatn font from GitHub releases
+Automatic Vazirmatn Font Downloader
+Downloads the beautiful Vazirmatn font if not available
 """
 
-import requests
 import os
-import zipfile
-import shutil
+import requests
+from pathlib import Path
 
-def download_vazirmatn_font():
+FONT_URL = "https://github.com/rastikerdar/vazirmatn/raw/master/fonts/ttf/Vazirmatn-Regular.ttf"
+FONT_PATH = "Vazirmatn-Regular.ttf"
+
+def download_font():
     """
-    Download Vazirmatn font from official GitHub repository
+    Download Vazirmatn font if it doesn't exist
     """
-    font_file = "Vazirmatn-Regular.ttf"
-    
-    # Check if font already exists
-    if os.path.exists(font_file):
-        print(f"✅ Font already exists: {font_file}")
+    if os.path.exists(FONT_PATH):
+        print(f"✅ Font already exists: {FONT_PATH}")
         return True
     
     try:
         print("📥 Downloading Vazirmatn font...")
-        
-        # Direct download URL for Vazirmatn font
-        font_url = "https://github.com/rastikerdar/vazirmatn/releases/download/v33.003/Vazirmatn-font-v33.003.zip"
-        
-        # Download the zip file
-        response = requests.get(font_url, timeout=30)
+        response = requests.get(FONT_URL, timeout=30)
         
         if response.status_code == 200:
-            zip_path = "vazirmatn_temp.zip"
-            
-            # Save zip file
-            with open(zip_path, 'wb') as f:
+            with open(FONT_PATH, 'wb') as f:
                 f.write(response.content)
-            
-            print("📦 Extracting font...")
-            
-            # Extract the zip
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                # Find the Regular TTF file
-                for file in zip_ref.namelist():
-                    if 'Vazirmatn-Regular.ttf' in file:
-                        # Extract to current directory
-                        source = zip_ref.open(file)
-                        target = open(font_file, 'wb')
-                        with source, target:
-                            shutil.copyfileobj(source, target)
-                        print(f"✅ Font installed: {font_file}")
-                        break
-            
-            # Cleanup
-            os.remove(zip_path)
+            print(f"✅ Font downloaded successfully: {FONT_PATH}")
             return True
         else:
-            print(f"❌ Failed to download font: HTTP {response.status_code}")
+            print(f"❌ Failed to download font. Status code: {response.status_code}")
             return False
-            
     except Exception as e:
         print(f"❌ Error downloading font: {e}")
-        print("⚠️  App will use fallback font (Tahoma)")
         return False
 
 if __name__ == "__main__":
-    download_vazirmatn_font()
+    download_font()
